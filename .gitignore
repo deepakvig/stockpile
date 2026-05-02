@@ -29,3 +29,6 @@ charts/
 # OS
 .DS_Store
 Thumbs.db
+
+# Private notes
+PRIVATE_NOTES.md
