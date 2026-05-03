@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--symbol", metavar="TICKER",
                         help="Chart only this symbol (overrides config.toml symbols list)")
     parser.add_argument("--output-dir", metavar="DIR", help="Override output directory from config.toml")
+    parser.add_argument("--png", action="store_true", help="Also save a static PNG alongside each HTML chart")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir) if args.output_dir else config.OUTPUT_DIR
@@ -128,7 +129,7 @@ def main():
 
             output_path = output_dir / f"{symbol}_cost_basis.html"
             option_breakdown = {"intrinsic": intrinsic_series, "time_value": time_value_series} if open_options else None
-            create_cost_basis_chart(symbol, price_history, series, str(output_path), live_cost_series, option_breakdown, open_options)
+            create_cost_basis_chart(symbol, price_history, series, str(output_path), live_cost_series, option_breakdown, open_options, save_png=args.png)
 
     log.info("Done.")
 

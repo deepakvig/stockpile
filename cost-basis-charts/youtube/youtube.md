@@ -1,27 +1,11 @@
 # YouTube Script: "Visualize Your Position's Cost Basis with Claude Code"
 
-
-TODO:
-- HOOK — solid, good energy. One note: "used up my weekly allowance
-  of Claude Design usage" sounds slightly negative on camera. Consider
-  framing it as "I've been experimenting with Claude Design" without
-  the limitation detail.
-
-Summary of things still needing your attention before recording:
-  1. Line 91: "see a some" → "see some"
-  2. Line 184: "or find" → "or finding"
-  3. Line 193: placeholder text "make a line showing this, etc..."
-     needs real narration
-  4. Line 196: "black sholes" → "Black-Scholes"
-  5. Line 241: remove or rewrite the "and 4th" — it's orphaned
-  6. Line 242: "claude code" → "Claude Code", "lets us" → "let us"
-  7. HOW I BUILT THIS section is missing a closing quote
-
-
 ## Title
 Charts Your Broker Doesn't Show You (Using Claude Code)
 
 ## Thumbnail Ideas
+
+Done - Choosing #1
 
 **Concept 1 — The Chart IS the Thumbnail** *(recommended)*
 Background: screenshot of the Midnight-scheme chart (dark navy,
@@ -54,40 +38,53 @@ BROKER HIDES THIS' at the top"
 ---
 
 ## HOOK (0:00–1:30)
-*[Animation: chart fly-in — close price line draws left to right,
+
+*[10 Animation: chart fly-in — close price line draws left to right,
 then adjusted cost basis line draws underneath it, transaction
 markers pop in, right-edge labels appear showing P&L]*
+
+DONE -----
 
 This episode is all about charting your positions with Claude Code.
 It's related to my last episode about making Google Sheets for your
 positions with Claude Code, linked in the description.
 
-We're going to once again use transactions logs from your brokerage,
+We're going to once again use transaction logs from your brokerage,
 but this time we're going to visualize your position performance
 with charts.
 
 Borrowing the theme from last episode, the charts in this episode
-will show you something your brokerage account doesn't — your *real*
-performance.
+will show you something your brokerage account doesn't — your positions
+*real* performance.
 
-[Switch to a real chart]
-These charts include every covered call and put you've ever sold,
+[11 Switch to a real chart]
+
+DONE -----
+
+Here's a more complex chart.
+We'll dive deeper into this chart later in this episode.
+
+It visualizes every call and put you've ever bought or sold,
 every dividend you've collected, and every time you've bought and
-sold shares.
+sold shares.  This information will be in the transaction logs
+you'll download from your brokerage.
 
-I built this entire thing without writing a single line of code
-myself, I just described what I wanted, and Claude wrote all the
+I built this entire thing without writing a single line of code,
+I just described what I wanted, and Claude wrote all the
 code to produce these charts, and document them. It even suggested
 the free charting tool to use.
 
 [Back to Animation]
 
-Then Claude Design, a new product that comes with your Claude Code
-subscription, took one of the charts and made this animation.
-That's what you're seeing here and here's all I did to make the
-animation: I asked twice, second time was successful but used up my
-weekly allowance of Claude Design usage. That was my first
-experiment with Design.
+DONE -----
+
+This is Claude Design, a new product that comes with Claude Code.
+I simply asked it to animate one of the static charts I generated
+from my transaction log.
+
+That's what you're seeing here and all I did was ask. That was my first
+experiment with Claude Design, and I'm looking forward to using it more
+in the future.
 
 ---
 
@@ -95,36 +92,52 @@ experiment with Design.
 
 [Show actual chart]
 
-Back to the more detailed Cost Basis Chart
+DONE -----
 
-"Most people look at their brokerage account and see a some numbers
-or a chart showing a simple average cost per share. We'll do better.
-These charts will enhance your typical brokerage view with every
+Back to the more detailed static Cost Basis Chart
+
+Most people look at their brokerage account and see a table or chart
+showing a simple average cost per share. We'll do better.
+These charts will enhance your typical broker's position view with every
 transaction related to each of your positions. The Python script
 parses your transaction history, runs First In, First Out accounting
 on every trade, and subtracts all the income you've collected. Each
-of the lines you see here is a different view of how profitable your
-position is.
+of the lines you see here is a view of a different metric measuring how
+profitable your position is.
 
-It also overlays these lines on the real historical price from Yahoo
-Finance, so you can see the full picture at a glance, the blue line
-here..."
+It also includes the real historical price from Yahoo
+Finance, this blue line.  So you can see the full picture at a glance.
 
 ---
 
 ## LIVE DEMO — ADDING PNG EXPORT (2:10–4:10)
 *[Screen: terminal with Claude Code open, chart HTML visible]*
 
-"Now lets see what it looks like to add a feature with Claude Code.
-The charts output as HTML, which is great — but what if I want to
-share one as an image in a doc or a Slack message?
+DONE -----
 
-I'll just ask."
+Before we really dig in to the features of the chart just shown,
+let's see how to add a feature to the chart with Claude Code.
+
+The chart outputs as HTML, which is great — but what if I want to
+share one as an image in a doc or a Slack message?  I could just do a
+screen capture, but it might be easier to generate a PNG of the 
+chart.
+
+Let me ask Claude...
+But first, I need to remind claude how we run things around here,
+and I'll ask him to put it in his Claude.md file so he remembers 
+going forward.
+
+[go over text in screen...]
+
+DONE -----
 
 *[Type into Claude Code: "add a --png flag that saves a static PNG
 of the chart alongside the HTML"]*
 
 *[Claude writes the code — briefly show the diff scrolling]*
+
+DONE -----
 
 "Done. Let's run it."
 
@@ -133,6 +146,8 @@ of the chart alongside the HTML"]*
 
 *[File explorer: PFE_cost_basis.png appears in the charts/ folder]*
 *[Open the PNG]*
+
+DONE -----
 
 "That's the whole workflow. Describe what you want, Claude writes it,
 you test it. No docs, no Stack Overflow, no writing code."
@@ -152,15 +167,22 @@ average cost of your shares based on the order you bought them —
 first in, first out. Every time you buy shares, it includes them in
 the average. Every time you sell, the oldest lots come off first
 and it adjusts.
+ 
+---- ^^ Done
 
-The orange line is your adjusted cost basis. It starts the same as
-FIFO, but every time you collect a premium on a covered call or a
-put, or receive a dividend, that income gets subtracted from your
-cost. Over time, if you're actively selling options, you'll see this
+The orange line is your adjusted cost basis. Every time you collect
+a premium on a covered call or put, or receive a dividend, that income
+gets subtracted from your cost. Over time, if you're actively selling
+options and/or collecting dividends, you'll see this
 line drift lower and lower — meaning your cost basis is less, and
 it's easier for the position to be profitable. The one exception is
 if you sell a debit roll, not a credit, then the line will drift
-higher.
+higher.  For selling options, that means you paid more premium to close out
+your old position than you collected to open your new position.
+
+
+**** looks like rolls aren't showing the STO transaction?
+bug to fix, look at transaction log.
 
 The dots on the lines mark individual transactions — buys, sells,
 options trades, dividends. Hover over any dot, and you'll see
@@ -198,42 +220,54 @@ to the position's close out value, then you may consider taking
 action.
 
 You'd probably be better off closing the position and investing in
-better yielding cash or find another investment opportunity."
+better yielding cash or finding another investment opportunity.
 
 ---
 
 ## HOW I BUILT THIS WITH CLAUDE CODE (7:40–8:20)
 
-"The entire script for building these cost basis charts for each of
-your positions was written by Claude Code. I described what I
-wanted — parse broker CSVs, compute FIFO cost basis,
-make a line showing this, make another line showing this, etc...
-add the historical Yahoo Finance prices, and the current option —
-and Claude wrote it. Then I iterated visually: tweaked the chart
-layout, added things like the black sholes estimate of the open
-option line, added the annotation collision-avoidance so labels
+"The entire script for building these cost basis charts was written by
+Claude Code. I described what I wanted 
+ — parse broker CSVs
+ - compute FIFO cost basis,
+ - make a line showing this, make another line showing that
+ - Annotate this line like this
+ - add the historical Yahoo Finance prices,
+ - and a line for the current option
+
+And on and on, and Claude wrote it. Then I iterated visually:
+tweaked the chart layout, added things like the Black-Scholes estimate of
+the open option line, added the annotation collision-avoidance so labels
 don't overlap.
 
-The whole workflow is: describe the feature, look at the output, say
-what's wrong, repeat. So much easier than the olden days when I
-actually had to write the code from scratch.
+The whole workflow is:
+- describe the feature I want to Claude,
+- let Claude work its magic and implement it.
+- look at the output,
+- say what's wrong, 
+- repeat.
+
+So much easier than the olden days when I actually had to write the code
+from scratch.  And Claude is a better coder, documenter, and refactorer
+than I ever was.
 
 ---
 
 ## WHAT YOU'LL NEED (8:20–8:45)
 
-If you'd like to do this yourself with your transactions logs,
+If you'd like to do this yourself with your transaction logs,
 You'll need to do some setup.  The easy-mode way to do this is to get
-a subscription to Claude Code (linked in Readme), and start Claude in the
-stockpile/cost-basis-charts directory after cloning or downloading the
-repository.  Then ask it to help you get it running with your
-transactions file.
+a subscription to Claude Code (linked in the description and project README),
+and start Claude in the stockpile/cost-basis-charts directory after cloning
+or downloading the repository.  Then ask it to help you get it running with
+your transactions file.
 
 You'll need:
 
 1. A transaction history export from your brokerage. My repo
    currently supports Schwab and Robinhood, more brokerages soon.
-2. Python installed on your machine, see the README for details.
+2. Python installed on your machine, see the README for details
+   and let Claude help if you have a Claude subscription.
 3. This repo — link in the description, it's free on GitHub.
 
 ---
@@ -254,28 +288,30 @@ from your brokerage.
 ## RUNNING IT (9:15–10:15)
 *[Terminal: `uv run python cost-basis-charts/run_charts.py`]*
 
-"One command from the repo root. It'll parse your transactions, pull
+Once you've done all the setup, you'll run it with one command from
+the repo root. It'll parse your transactions, pull
 historical prices from Yahoo Finance, and write an interactive HTML
-file for each ticker into the `charts/` folder."
+file for each ticker into the `cost-basis-charts/charts` folder.
 
 *[Go to charts folder and open one with Chrome]*
 
 Open one of the charts you just made, and have a look — be sure to
 hover the mouse over the lines.
 
-and 4th, if you want to tweak it, improve or add new features, feel
-free! Subscribe to claude code, fork my repo, and lets us know what
+If you want to tweak it, improve or add new features, feel
+free! Subscribe to Claude Code, fork my repo, and let us know what
 you did.
 
 ---
 
 ## OUTRO (10:15–10:35)
 Link to the repo is in the description — it's all open source. If
-you're running covered calls, wheeling, or just want a cleaner
-picture of your actual risk in a position, this could help.
+you're running covered calls, wheeling, or just want a more complete
+picture of your positions' performance, this will help.
+
 Let me know in the comments what other views or features would
-be useful, what other interesting things we could do with our
-transaction logs?
+be useful, I'd love to hear your ideas about other interesting things
+we could do with our transaction logs.
 
 Please consider liking and subscribing, and have a look at my last
 episode, which was about making Google Sheets from your transaction
@@ -285,11 +321,11 @@ logs.
 
 ## RESOURCES (description links)
 
-- Repo: https://github.com/driekhof/stockpile
+- Repo: https://github.com/medloh/stockpile
 - Black-Scholes explained:
   https://www.investopedia.com/terms/b/blackscholes.asp
 - Previous episode (Google Sheets positions tracker):
-  [PASTE URL HERE]
+  https://youtu.be/9uf3cyOWPBQ?si=kRyNK88tkc9qD5o0
 
 Support the work:
 - GitHub Sponsors: https://github.com/sponsors/medloh
@@ -328,7 +364,7 @@ Support the work:
 
 ### Exit Screens
 Go back and add this video to the exit screen of:
-- The Google Sheets episode [PASTE URL HERE]
+- The Google Sheets episode https://youtu.be/9uf3cyOWPBQ?si=3MoC5Mfjvf39ujn0
 - Any other popular episodes on your channel
 Viewers already interested in your tools are most likely to watch
 both.
