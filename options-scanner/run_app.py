@@ -331,9 +331,15 @@ def _show_iv_chart(df: pd.DataFrame, spot: float, mode: str,
         return
 
     excess_max = max(abs(sub["IV+pp"].min()), abs(sub["IV+pp"].max()), 1.0)
+    # Green = attractive (high IV+pp to sell; low IV+pp to buy); red = unattractive.
+    # Flip the range in buy mode so the color always agrees with the table shading.
+    if buy:
+        color_range = ["#22c55e", "#cbd5e1", "#ef4444"]  # negative=green, positive=red
+    else:
+        color_range = ["#ef4444", "#cbd5e1", "#22c55e"]  # negative=red, positive=green
     color_scale = alt.Scale(
         domain=[-excess_max, 0, excess_max],
-        range=["#2563eb", "#cbd5e1", "#dc2626"],
+        range=color_range,
     )
     shape_scale = alt.Scale(domain=["call", "put"],
                             range=["circle", "square"])
@@ -369,7 +375,7 @@ def _show_iv_chart(df: pd.DataFrame, spot: float, mode: str,
     )
 
     background = alt.Chart(sub[~sub["is_top"]]).mark_circle(
-        size=60, opacity=0.30,
+        size=60, opacity=1.0,
     ).encode(
         x=base_x,
         y="IV%:Q",
@@ -426,9 +432,9 @@ def _show_iv_chart(df: pd.DataFrame, spot: float, mode: str,
         "Dashed gray line is the fitted volatility surface for this "
         "expiration. **Larger outlined dots are the top picks shown in "
         "the table — across all expirations.** Faded dots are the rest "
-        "of the chain at this expiration for context. Red = rich premium "
-        "(sell), blue = cheap (buy). Vertical dashed line marks the "
-        "current spot price."
+        "of the chain at this expiration for context. Green = attractive "
+        "premium (rich to sell / cheap to buy), red = unattractive. "
+        "Vertical dashed line marks the current spot price."
     )
 
 
@@ -803,7 +809,10 @@ def _tab_single() -> None:
 # ── Tab: Portfolio ───────────────────────────────────────────────────────────
 
 def _tab_portfolio() -> None:
-    uploaded = st.file_uploader("Upload brokerage CSV export", type=["csv"])
+    uploaded = st.file_uploader("Brokerage CSV export", type=["csv"])
+    st.markdown(
+        "**:red[🔒 Your file is processed locally and never leaves your machine.]**"
+    )
 
     pc1, pc2, pc3, pc4, pc5 = st.columns(5)
     with pc1:

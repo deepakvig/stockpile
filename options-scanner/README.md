@@ -25,8 +25,10 @@ uv run streamlit run options-scanner/run_app.py
 A browser tab opens at `http://localhost:8501` with two tabs:
 
 - **Single Ticker** — type a symbol, pick Calls/Puts/Both and Sell/Buy,
-  hit Scan. You get a volatility-surface chart with the top picks
-  highlighted, plus the ranked table below.
+  hit Scan. You get a volatility-surface chart with top picks
+  highlighted, a per-expiration chain view sorted by strike with
+  IV+pp row shading, and a top candidates table ranked across all
+  expirations.
 - **Portfolio** — drag in a brokerage CSV (Schwab, Robinhood, Fidelity,
   or Merrill), pick the brokerage, hit Scan Portfolio. Each position
   gets its own chart and table in a collapsible section.
@@ -125,7 +127,7 @@ uv run options-scanner/run_scanner.py AMD --roll \
 | `--max-dte` | none | Maximum days to expiration |
 | `--min-oi` | 25 | Minimum open interest |
 | `--delta-min` | 0.10 | Exclude abs(delta) below this |
-| `--delta-max` | 0.50 | Exclude abs(delta) above this |
+| `--delta-max` | 0.75 | Exclude abs(delta) above this |
 | `--top` | 10 | Max rows shown in terminal |
 | `--html` | off | Save an HTML report (see below) |
 | `--output-dir` | `options-scanner/output/` | Directory for HTML files |
@@ -144,8 +146,8 @@ The file is written to `options-scanner/output/` by default, named
 `{TICKER}_{type}_{action}_{date}.html` (e.g.
 `AMD_call_sell_20260505.html`). Open it in any browser — columns are
 sortable by clicking the headers, and the IV+pp column is
-color-coded (red/orange = overpriced sell signal; green/blue =
-underpriced buy signal).
+color-coded (green = attractive / overpriced to sell; red =
+unattractive / underpriced to buy).
 
 Override the directory with `--output-dir path/to/dir`.
 
