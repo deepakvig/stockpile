@@ -154,7 +154,7 @@ Override the directory with `--output-dir path/to/dir`.
 | Column | What it means |
 |--------|--------------|
 | Strike | Option strike price |
-| Expiration | Expiration date; `2E` = 2 earnings events before expiry |
+| Expiration | Expiration date |
 | DTE | Days to expiration |
 | Bid / Ask / Mid | Market prices |
 | IV% | Implied volatility (annualized) |
@@ -251,3 +251,23 @@ by IV excess so the richest new premium surfaces first.
   quotes and proper Greeks (delta/gamma/theta/vega) — currently
   delta is computed from Black-Scholes using Yahoo's IV, which can
   be stale on thinly traded strikes.
+
+## Disclaimer
+
+This software is provided free of charge, as-is, with no warranty
+of any kind. There is no guarantee of accuracy, completeness, or
+fitness for any particular purpose.
+
+All data is sourced from Yahoo Finance's public API. The quality
+and timeliness of the output is entirely dependent on what Yahoo
+Finance returns. Implied volatility figures can be stale,
+especially on thinly traded strikes; bid/ask spreads on LEAPS can
+be wide; and data may occasionally be missing or incorrect.
+Nothing this tool produces should be taken as a guarantee of any
+particular result.
+
+This is not financial advice. Options trading involves substantial
+risk of loss and is not appropriate for all investors. Do your own
+research before acting on anything this tool surfaces. The authors
+are not responsible for any trading losses or other damages arising
+from use of this software.

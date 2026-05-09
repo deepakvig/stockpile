@@ -158,11 +158,16 @@ def _low_oi_mask(oi: pd.Series, min_oi: int) -> list[bool]:
     return [v < thresh for v in oi.tolist()]
 
 
-_CELL_RED  = "background-color: rgba(239,68,68,0.40)"
-_BID_HELP  = ("Red: spread is wider than 1.5× the median for this table"
+_CELL_WARN = "background-color: rgba(234,179,8,0.45)"
+_BID_HELP  = ("Yellow: spread is wider than 1.5× the median for this table"
               " — higher execution cost.")
-_OI_HELP   = ("Red: OI is below 2× the min OI filter"
+_OI_HELP   = ("Yellow: OI is below 2× the min OI filter"
               " — limited liquidity, harder to fill at a good price.")
+_IVPP_HELP = ("Percentage points the option's IV sits above the fitted"
+              " volatility surface. Positive = richer than peers at a"
+              " similar strike and DTE. Under ~3 pp is noise; 5+ pp is"
+              " a genuine signal.")
+_VOL_HELP  = "Yellow: fewer than 4 contracts traded today — very thin activity."
 
 
 def _show_df(sub: pd.DataFrame, roll_close_cost: float | None = None,
@@ -173,10 +178,8 @@ def _show_df(sub: pd.DataFrame, roll_close_cost: float | None = None,
 
     disp = pd.DataFrame({
         "Strike": sub["strike"].apply(lambda x: f"${x:.0f}"),
-        "Expiration": sub.apply(
-            lambda r: datetime.strptime(r["expiration"], "%Y-%m-%d").strftime("%b %d '%y")
-            + (f" {int(r['earnings_count'])}E" if r.get("earnings_count", 0) > 0 else ""),
-            axis=1,
+        "Expiration": sub["expiration"].apply(
+            lambda e: datetime.strptime(e, "%Y-%m-%d").strftime("%b %d '%y")
         ),
         "DTE":    sub["dte"].astype(int),
         "Bid":    sub["bid"].round(2),
@@ -192,34 +195,45 @@ def _show_df(sub: pd.DataFrame, roll_close_cost: float | None = None,
     if roll_close_cost is not None:
         disp["NetCr"] = (sub["mid"] - roll_close_cost).round(2)
 
-    wide = _wide_spread_mask(sub["bid"], sub["ask"], sub["mid"])
-    lo   = _low_oi_mask(sub["open_interest"], min_oi)
+    wide   = _wide_spread_mask(sub["bid"], sub["ask"], sub["mid"])
+    lo     = _low_oi_mask(sub["open_interest"], min_oi)
+    low_vol = [v < 4 for v in sub["volume"].tolist()]
 
     styled = (
         disp.style
-        .apply(lambda _: [_CELL_RED if w else "" for w in wide],
+        .apply(lambda _: [_CELL_WARN if w else "" for w in wide],
                subset=["Bid", "Ask"])
-        .apply(lambda _: [_CELL_RED if l else "" for l in lo],
+        .apply(lambda _: [_CELL_WARN if l else "" for l in lo],
                subset=["OI"])
+        .apply(lambda _: [_CELL_WARN if v else "" for v in low_vol],
+               subset=["Vol"])
     )
 
     col_cfg = {
+        "DTE":   st.column_config.NumberColumn("DTE",   format="%d",
+                                               width="small"),
         "Bid":   st.column_config.NumberColumn("Bid",   format="$%.2f",
                                                help=_BID_HELP),
         "Ask":   st.column_config.NumberColumn("Ask",   format="$%.2f",
                                                help=_BID_HELP),
         "Mid":   st.column_config.NumberColumn("Mid",   format="$%.2f"),
-        "IV%":   st.column_config.NumberColumn("IV%",   format="%.1f%%"),
-        "IV+pp": st.column_config.NumberColumn("IV+pp", format="%+.1f pp"),
-        "Delta": st.column_config.NumberColumn("Delta", format="%.2f"),
-        "Ann%":  st.column_config.NumberColumn("Ann%",  format="%.1f%%"),
+        "IV%":   st.column_config.NumberColumn("IV%",   format="%.1f%%",
+                                               width="small"),
+        "IV+pp": st.column_config.NumberColumn("IV+pp", format="%+.1f pp",
+                                               width="small", help=_IVPP_HELP),
+        "Delta": st.column_config.NumberColumn("Delta", format="%.2f",
+                                               width="small"),
+        "Ann%":  st.column_config.NumberColumn("Ann%",  format="%.1f%%",
+                                               width="small"),
         "OI":    st.column_config.NumberColumn("OI",    format="%d",
-                                               help=_OI_HELP),
-        "Vol":   st.column_config.NumberColumn("Vol",   format="%d"),
+                                               width="small", help=_OI_HELP),
+        "Vol":   st.column_config.NumberColumn("Vol",   format="%d",
+                                               width="small", help=_VOL_HELP),
     }
     if roll_close_cost is not None:
         col_cfg["NetCr"] = st.column_config.NumberColumn("Net Credit",
-                                                         format="$%+.2f")
+                                                         format="$%+.2f",
+                                                         width="small")
 
     st.dataframe(styled, column_config=col_cfg, hide_index=True,
                  use_container_width=True)
@@ -479,36 +493,47 @@ def _show_chain_table(df_exp: pd.DataFrame, buy: bool, mode: str,
             bg = "background-color: rgba(100,116,139,0.18)"
         return [bg] * len(row)
 
-    # Cell-level overrides for spread and OI (applied after row bg, so they win).
-    wide = _wide_spread_mask(df_s["bid"], df_s["ask"], df_s["mid"])
-    lo   = _low_oi_mask(df_s["open_interest"], min_oi)
+    # Cell-level overrides for spread, OI, and vol (applied after row bg).
+    wide    = _wide_spread_mask(df_s["bid"], df_s["ask"], df_s["mid"])
+    lo      = _low_oi_mask(df_s["open_interest"], min_oi)
+    low_vol = [v < 4 for v in df_s["volume"].tolist()]
 
     styled = (
         disp.style
         .apply(_row_bg, axis=1)
-        .apply(lambda _: [_CELL_RED if w else "" for w in wide],
+        .apply(lambda _: [_CELL_WARN if w else "" for w in wide],
                subset=["Bid", "Ask"])
-        .apply(lambda _: [_CELL_RED if l else "" for l in lo],
+        .apply(lambda _: [_CELL_WARN if l else "" for l in lo],
                subset=["OI"])
+        .apply(lambda _: [_CELL_WARN if v else "" for v in low_vol],
+               subset=["Vol"])
     )
 
     col_cfg = {
+        "DTE":   st.column_config.NumberColumn("DTE",   format="%d",
+                                               width="small"),
         "Bid":   st.column_config.NumberColumn("Bid",   format="$%.2f",
                                                help=_BID_HELP),
         "Ask":   st.column_config.NumberColumn("Ask",   format="$%.2f",
                                                help=_BID_HELP),
         "Mid":   st.column_config.NumberColumn("Mid",   format="$%.2f"),
-        "IV%":   st.column_config.NumberColumn("IV%",   format="%.1f%%"),
-        "IV+pp": st.column_config.NumberColumn("IV+pp", format="%+.1f pp"),
-        "Delta": st.column_config.NumberColumn("Delta", format="%.2f"),
-        "Ann%":  st.column_config.NumberColumn("Ann%",  format="%.1f%%"),
+        "IV%":   st.column_config.NumberColumn("IV%",   format="%.1f%%",
+                                               width="small"),
+        "IV+pp": st.column_config.NumberColumn("IV+pp", format="%+.1f pp",
+                                               width="small", help=_IVPP_HELP),
+        "Delta": st.column_config.NumberColumn("Delta", format="%.2f",
+                                               width="small"),
+        "Ann%":  st.column_config.NumberColumn("Ann%",  format="%.1f%%",
+                                               width="small"),
         "OI":    st.column_config.NumberColumn("OI",    format="%d",
-                                               help=_OI_HELP),
-        "Vol":   st.column_config.NumberColumn("Vol",   format="%d"),
+                                               width="small", help=_OI_HELP),
+        "Vol":   st.column_config.NumberColumn("Vol",   format="%d",
+                                               width="small", help=_VOL_HELP),
     }
     if roll_close_cost is not None:
         col_cfg["NetCr"] = st.column_config.NumberColumn("Net Credit",
-                                                         format="$%+.2f")
+                                                         format="$%+.2f",
+                                                         width="small")
     st.dataframe(styled, column_config=col_cfg, hide_index=True,
                  use_container_width=True)
 
@@ -689,15 +714,13 @@ def _tab_single() -> None:
     df_filt   = df_r[df_r["delta"].abs().between(
                     res["delta_min"], res["delta_max"])].copy()
     spot      = float(df_r["spot"].iloc[0])
-    lt_date   = (date.today() + timedelta(days=366)).strftime("%b %d '%y")
 
     st.divider()
-    m1, m2, m3, m4 = st.columns(4)
+    m1, m2, m3 = st.columns(3)
     m1.metric("Spot", f"${spot:.2f}")
-    m2.metric("LT Close", lt_date)
-    m3.metric("Expirations", df_r["expiration"].nunique())
+    m2.metric("Expirations", df_r["expiration"].nunique())
     ed = res["earnings_dates"]
-    m4.metric("Next Earnings", ed[0].strftime("%b %d") if ed else "unknown")
+    m3.metric("Next Earnings", ed[0].strftime("%b %d") if ed else "unknown")
 
     if rcc is not None:
         st.info(f"Rolling {res['roll_type']} ${res['roll_strike']:.0f} "
@@ -747,7 +770,7 @@ def _tab_single() -> None:
 | Column | Meaning |
 |--------|---------|
 | Strike | Option strike price. |
-| Expiration | Expiration date. `2E` suffix = 2 earnings events occur before expiry. |
+| Expiration | Expiration date. |
 | DTE | Days to expiration. |
 | Bid / Ask | Market bid and ask prices. |
 | Mid | Midpoint of bid and ask — the price you'd typically target. |
@@ -771,8 +794,9 @@ def _tab_single() -> None:
 
 | Color | Column | Meaning |
 |-------|--------|---------|
-| Red cell | Bid / Ask | Spread exceeds 1.5× the median spread for this table — wider than typical, execution may cost more than expected. |
-| Red cell | OI | Open interest is below 2× the minimum OI filter — limited liquidity, harder to fill at a good price. |
+| Yellow cell | Bid / Ask | Spread exceeds 1.5× the median spread for this table — wider than typical, execution may cost more than expected. |
+| Yellow cell | OI | Open interest is below 2× the minimum OI filter — limited liquidity, harder to fill at a good price. |
+| Yellow cell | Vol | Fewer than 4 contracts traded today — very thin activity. |
 """)
 
 
@@ -878,11 +902,9 @@ def _tab_portfolio() -> None:
             earnings_dates = res["earnings_dates"]
             df             = res["df"]
 
-            m1, m2, m3 = st.columns(3)
+            m1, m2 = st.columns(2)
             m1.metric("Spot", f"${spot:.2f}")
-            lt = (date.today() + timedelta(days=366)).strftime("%b %d '%y")
-            m2.metric("LT Close", lt)
-            m3.metric("Next Earnings",
+            m2.metric("Next Earnings",
                       earnings_dates[0].strftime("%b %d")
                       if earnings_dates else "unknown")
 

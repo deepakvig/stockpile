@@ -3,6 +3,9 @@
 ## Title Ideas
 
 ### keep this one
+- Option Scanner by Claude
+- Claude finds the best Options
+- "Use Claude to find the Best Options (Python)"
 - "Claude Code Finds Mis-Priced Options (Python)"
 
 - "I Built a Free Web App That Finds Mispriced Options"
@@ -16,6 +19,10 @@
 ---
 
 ## Thumbnail Ideas
+
+ - start with big claude image and overlay option scanner tables.
+ - [Claude icon] Claude finds the best Options [Python logo][github logo]
+
 
 **Concept 1 — The Chart IS the Thumbnail** *(recommended)*
 Background: the volatility-surface scatter from the web app —
@@ -43,49 +50,63 @@ to a glowing red dot:
 
 *[SHOW BROKERAGE OPTION CHAIN BRIEFLY — wall of numbers]*
 
-If you sell options — covered calls, cash-secured puts — you've
-probably stared at an option chain like this and wondered
+If you sell options — covered calls, cash secured puts,
+you've probably stared at an option chain like this and wondered
 which contract is actually the best one to sell.
 
 Same goes for option buyers.
 
 *[BACK TO STREAMLIT — type **ticker**, click Scan]*
 
-I built a free tool with Claude Code in a couple nights
-that shows you the best ones, and visualizes it in a chart.
+I built a free option scanner with Claude Code in a couple nights
+that shows you the best ones in a chart and tables.
 
 Let me demonstrate:
 [Type a ticker. Click Scan. Wait...]
 
 *[SHOW THE VOLATILITY SURFACE CHART — dots and dashed curve]*
 
-This is every long-dated call on NVDA right now. Each dot is one
-option. The dashed line is what the rest of the chain says each
-strike's implied volatility *should* be — it's a fitted
-volatility surface.
+Let's say you have 100 shares of [Disney]
+you're interested in making some extra income on it by welling a covered call.
+You'd like to keep the option open for at least a year so you can be taxed
+at the long term rate on the premium you collect.
+
+Let's do the scan and see what it finds...
+
+This is every call for [Dis] right now for [Expir].
+It picked this expiration because it has the most attractive option.
+More on how it decides this in a bit.
+you can see the next earnings is [days] days away here.
+
+Each dot is an option, and the bigger ones are more attractive.
+The dashed line is what the rest of the option scanner says each
+strike's implied volatility *should* be — to be fancy, 
+it's a fitted volatility surface.
 
 *[POINT TO RED DOTS ABOVE THE LINE]*
 
 The red dots are sitting above the line. That means the market
 is pricing those options richer than their neighbors. More
-premium for the same amount of risk. Those are the calls you
-want to sell.
+premium for the same amount of risk. Those are the calls to consider selling.
 
 *[POINT TO BLUE DOTS BELOW]*
 
 Blue dots are the opposite — cheap for what they are. If you're
-buying calls, you'd look at those.
+buying calls, you'd look at those.  Probably not the ones you'd want to sell.
 
 *[HOVER OVER A RED DOT — tooltip shows strike, IV+pp, delta]*
 
 Hover any dot and you get the strike, the expiration, how many
 percentage points it sits above the surface, the delta, and the
-open interest. Everything you need to decide whether to sell it.
+open interest. Other than your situation and circumstances, that is
+everything you need to decide whether to sell it.
 
 I'm going to spend this video showing you how the chart works,
 what to actually do with it, and how to run it on your own
 positions in about five minutes of setup. There's a portfolio
-scanner, a rolling-position mode, and more. Let's get into it.
+scanner, a rolling-position mode, a buy/sell toggle and more.
+
+Let's get into it.
 
 ---
 
@@ -93,8 +114,9 @@ scanner, a rolling-position mode, and more. Let's get into it.
 
 *[SHOW THE CHART AGAIN — annotate as you talk]*
 
-Quick framing on what you're looking at, because the chart is
-doing most of the work.
+Let's take a closer look at the chart.
+The chart provides a great way to see the attractiveness of all options
+for a given expiration.
 
 A stock's option chain should form a smooth surface. Plot
 implied volatility against strike, and it traces a shape — the
@@ -107,13 +129,13 @@ chain. When an option's actual IV sits noticeably above the
 line, something made it more expensive than its neighbors — a
 stale quote, a thin market, event risk that isn't evenly
 distributed, or just an inefficiency. That's the option you
-want to sell.
+want to consider first, to sell.
 
 *[POINT TO COLOR LEGEND]*
 
 The color tells you the gap, in percentage points, between the
 actual IV and the fitted surface. We call it IV-plus-pp. Small
-gaps — under three percentage points — mean the chain is
+gaps — under three percentage points — mean the option is
 uniformly priced and the ranking is mostly noise. Five or more
 points above the line is a genuine signal.
 
@@ -125,8 +147,8 @@ The first is the chain view. It shows every option in the
 expiration you have selected in the chart dropdown, sorted by
 strike — like reading a real option chain from your broker.
 The rows are shaded: green means IV+pp is meaningfully above
-the average for that expiration, gray means it's in the noise
-floor, red means it's below average.
+the average for that expiration, gray means it's price is close to expected,
+and red means the price of the option is less than usual.
 
 *[POINT TO ROW SHADING IN CHAIN VIEW]*
 
@@ -135,32 +157,33 @@ expiration at a glance, shading doing the filtering for you —
 you can see in seconds which strikes have genuinely rich
 premium and which ones are unremarkable.
 
-*[POINT TO RED BID/ASK CELLS]*
+*[POINT TO YELLOW BID/ASK CELLS]*
 
-Two other signals in the table. Red Bid and Ask cells mean
+Two other signals in the table. Yellow Bid and Ask cells mean
 the spread is wider than typical for this chain — the gap
 between what buyers will pay and sellers will accept. A wide
 spread means your real execution price may land meaningfully
-worse than the mid suggests. And a red OI cell means open
-interest is low — barely past the filter threshold — which
-makes it harder to fill at a good price. Hover the question
-mark on any column header and it explains exactly what
-triggers the color.
+worse than the mid suggests. Yellow OI or Vol means open
+interest or today's volume is low — which makes it harder to
+fill at a good price. Hover over the question mark on any
+column header and it explains exactly what triggers the color.
 
 *[POINT TO SECOND TABLE — "TOP CANDIDATES — ALL CHAINS"]*
 
 Below that is the top candidates table — the highest-ranked
-options by IV+pp pulled from every expiration. The chain view
-says "show me everything for January, sorted by strike." This
+options by IV+pp pulled from every expiration. The top table
+"show me everything for single expiration, sorted by strike." This
 one says "show me the best ten, regardless of expiration."
 
 *[POINT TO DELTA COLUMN]*
 
 Delta is your approximate probability of being assigned at
 expiration. A delta of 0.30 means roughly a thirty percent
-chance the stock closes above your strike. Lower delta means
-you keep the stock more often — you give up some premium to
-get that safety margin.
+chance the stock closes above your strike, for a covered call. 
+Lower delta means you keep the stock more often — 
+you give up some premium, but there's less chance the stock will
+rise above your strike, and you won't lose out on as much
+underlying appreciation if it gets called away.
 
 *[POINT TO ANN% COLUMN]*
 
@@ -169,13 +192,6 @@ for calls, relative to the stock's current price. For puts,
 relative to the strike, which is the capital you'd be putting
 at risk. This lets you compare options across different
 expirations on the same footing.
-
-*[POINT TO LT CLOSE METRIC AT TOP]*
-
-And up here — LT Close. If you open a short position today and
-hold it for three hundred and sixty-six days before closing,
-the premium is taxed at the long-term capital gains rate. This
-tells you the earliest you could close for that treatment.
 
 ---
 
@@ -276,11 +292,6 @@ may evaporate the morning after the announcement whether or
 not the stock moves much. Worth factoring in before you
 commit.
 
-*[POINT TO EXPIRATION COLUMN IN TOP CANDIDATES TABLE]*
-
-In the top candidates table, the Expiration column uses a
-shorthand: `2E` means two earnings events fall before that
-expiration.
 
 *[CLICK "DOWNLOAD HTML REPORT" BUTTON]*
 
@@ -521,8 +532,8 @@ SMALL CHANGE]*
 And extending it works exactly the same way. I've done it
 several times since the initial build — adding a full chain
 view table sorted by strike with green-gray-red IV+pp row
-shading, flagging wide bid-ask spreads and low open interest
-with red cell highlights, putting the next earnings date right
+shading, flagging wide bid-ask spreads and low open interest or volume
+with yellow cell highlights, putting the next earnings date right
 in the table title with a days-to-go count. Each of those was
 a short conversation. Describe what you want, Claude builds it.
 No documentation to read, no library to learn.
@@ -790,3 +801,23 @@ If you hit a snag, drop a comment — I check them.
 Add to exit screen of:
 - Cost basis charts episode
 - Google Sheets tracker episode
+
+---
+
+## Disclaimer (read on camera or include in description)
+
+This tool is free, open-source software provided as-is with no
+warranty of any kind. There is no guarantee of accuracy,
+completeness, or fitness for any purpose.
+
+All data comes from Yahoo Finance's public API. The output is
+only as good as what Yahoo Finance returns — implied volatility
+figures can be stale, spreads on LEAPS can be wide, and data
+can occasionally be missing or wrong. Nothing this tool produces
+should be interpreted as a guarantee of any trading outcome.
+
+This is not financial advice. Options trading involves
+substantial risk of loss and is not right for every investor.
+Do your own research before acting on anything this scanner
+surfaces. The authors are not responsible for any losses or
+other damages from using this software.
