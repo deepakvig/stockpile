@@ -13,8 +13,14 @@ The options scanner supports two data sources:
 ### 1. Get API credentials
 
 Register at [developer.schwab.com](https://developer.schwab.com).
+- follow the steps, it required an approval which took a couple of hours
+  before I could create app (next step)
+
 Create an app and note your **App Key** and **App Secret**.
 Set the callback URL to `https://127.0.0.1:8182/`.
+- simple, just filling in some descriptive fields.
+- after creating this app it also took a few hours before app
+  was ready to use.
 
 ### 2. Create config.toml
 
@@ -42,9 +48,15 @@ token_file   = "~/.config/schwab-token.json"
 ```bash
 uv run options-scanner/schwab_auth.py
 ```
+- This won't work until app is ready.
+- You may get key and secret before app is ready to be used.
 
 This opens a browser, logs you in to Schwab, and saves an OAuth token.
 Subsequent runs refresh the token silently.
+- this will ask you to login
+- it wants you to login to your schwab account, not the new developer acct.
+- You will get an SSL warning since you're using a self-signed cert locally.
+- You'll have to press the advanced button to continue
 
 ## Usage
 
@@ -87,13 +99,6 @@ dropdown. The default is read from `config.toml`.
 Earnings dates always come from Yahoo Finance — the Schwab API does
 not provide this data. Everything else (chain, prices, roll close cost)
 uses the selected provider.
-
-## Setup experience notes
-
-<!-- TODO: fill in your firsthand experience setting up the Schwab
-developer account and OAuth flow — gotchas, timing quirks, portal
-navigation, anything that would help someone going through it for
-the first time. -->
 
 ## Architecture
 
