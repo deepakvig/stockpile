@@ -74,22 +74,24 @@ Selling an option and holding the short position for 366+ days
 qualifies the premium for long-term capital gains rates. The tool
 prints the earliest qualifying close date for a position opened today.
 
-## YouTube production materials (gitignored)
+## YouTube production materials (sibling private repo)
 
-`youtube/` holds the scripts, slide HTML, and image assets for the
-YouTube tutorials about this tool. The whole folder is gitignored —
-nothing in there ships to the repo — but it is active working
-material and Claude should treat it as in-scope when asked.
+Scripts, slide HTML, and image assets for the YouTube tutorials
+about this tool live in a separate private repo at
+`../stockpile-private/options-scanner/youtube/` (sibling directory
+to this one). They are active working material and Claude should
+treat them as in-scope when asked.
 
-Layout: one subfolder per episode.
+Layout: one subfolder per episode, under
+`../stockpile-private/options-scanner/youtube/`.
 
-- `youtube/ep1/` — first episode: full tool walkthrough. Script at
+- `ep1/` — first episode: full tool walkthrough. Script at
   `ep1/script.md`, slide HTMLs (`*-slide.html`), and `ep1/images/`
   with thumbnails and screenshots.
-- `youtube/ep2/` — second episode in active drafting. Focused on
-  the Schwab data source plus features added since ep1 (GEX chart,
+- `ep2/` — second episode in active drafting. Focused on the
+  Schwab data source plus features added since ep1 (GEX chart,
   index tickers, stockpile CSV, polish). Script at `ep2/script.md`.
-- Future episodes follow the same `youtube/epN/` pattern.
+- Future episodes follow the same `epN/` pattern.
 
 When the user asks about "the script", "the episode", or "the
 YouTube video" without naming one, assume the most recent episode

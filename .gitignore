@@ -50,9 +50,3 @@ Thumbs.db
 
 # Claude Code — local permission overrides (machine-specific paths and allows)
 .claude/settings.local.json
-
-# Private notes
-PRIVATE_NOTES.md
-
-# YouTube scripts and slide assets (kept local, not in repo)
-options-scanner/youtube/
