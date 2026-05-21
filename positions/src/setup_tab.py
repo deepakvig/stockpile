@@ -144,6 +144,177 @@ from stocks_shared.yahoo import (
 )
 
 
+# ── Format-request builder ───────────────────────────────────────────────────
+
+def _open_call_section_fmt(sheet_id, base_0: int) -> list:
+    """Per-call format requests for one OPEN CALL section pair.
+
+    base_0 is the 0-indexed row of the section header (= the row that
+    contains "OPEN CALL — $strike M/DD/YY" and "OPEN CALL METRICS").
+    The 8-row block uses base_0..base_0+7.
+    """
+    return [
+        sheets.section_header(sheet_id, base_0),
+        sheets.currency(sheet_id, base_0 + 1, 4, base_0 + 2, 5),    # Strike (E)
+        sheets.date_fmt(sheet_id, base_0 + 3, 4, base_0 + 4, 5),    # Date Opened (E)
+        sheets.currency(sheet_id, base_0 + 1, 7, base_0 + 4, 8),    # Premium/Cost/Unrealized (H)
+        sheets.green_if_positive(sheet_id, base_0 + 1, 7, base_0 + 2, 8),  # Premium Received
+        sheets.green_if_positive(sheet_id, base_0 + 3, 7, base_0 + 4, 8),  # Unrealized P&L
+        sheets.plain_number(sheet_id, base_0 + 4, 4, base_0 + 5, 5),       # Days Open
+        sheets.currency(sheet_id, base_0 + 5, 4, base_0 + 6, 5),           # Stock Price at Open
+        sheets.plain_number(sheet_id, base_0 + 6, 4, base_0 + 7, 5),       # Days Left
+        sheets.plain_number(sheet_id, base_0 + 7, 4, base_0 + 8, 5),       # Contracts
+        sheets.right_align(sheet_id, base_0 + 4, 7, base_0 + 5, 8),        # Status
+        sheets.currency(sheet_id, base_0 + 5, 7, base_0 + 7, 8),           # Intrinsic / Time Value
+        sheets.percent(sheet_id, base_0 + 7, 7, base_0 + 8, 8),             # ** TV Ann Yield
+    ]
+
+
+def _open_put_section_fmt(sheet_id, base_0: int) -> list:
+    """Per-put format requests for one OPEN PUT section pair. Mirror
+    of _open_call_section_fmt; rows/cols match."""
+    return [
+        sheets.section_header(sheet_id, base_0),
+        sheets.currency(sheet_id, base_0 + 1, 4, base_0 + 2, 5),    # Strike (E)
+        sheets.date_fmt(sheet_id, base_0 + 3, 4, base_0 + 4, 5),    # Date Opened (E)
+        sheets.currency(sheet_id, base_0 + 1, 7, base_0 + 4, 8),    # Premium/Cost/Unrealized (H)
+        sheets.green_if_positive(sheet_id, base_0 + 1, 7, base_0 + 2, 8),  # Premium Received
+        sheets.green_if_positive(sheet_id, base_0 + 3, 7, base_0 + 4, 8),  # Unrealized P&L
+        sheets.plain_number(sheet_id, base_0 + 4, 4, base_0 + 5, 5),       # Days Open
+        sheets.currency(sheet_id, base_0 + 5, 4, base_0 + 6, 5),           # Stock Price at Open
+        sheets.plain_number(sheet_id, base_0 + 6, 4, base_0 + 7, 5),       # Days Left
+        sheets.plain_number(sheet_id, base_0 + 7, 4, base_0 + 8, 5),       # Contracts
+        sheets.right_align(sheet_id, base_0 + 4, 7, base_0 + 5, 8),        # Status
+        sheets.currency(sheet_id, base_0 + 5, 7, base_0 + 7, 8),           # Intrinsic / Time Value
+        sheets.percent(sheet_id, base_0 + 7, 7, base_0 + 8, 8),             # TV Ann Yield
+    ]
+
+
+def build_fmt_requests(sheet_id, status: str, p: int, i: int, txn_row: int,
+                       show_calls: bool, show_puts: bool,
+                       n_calls: int = 1, n_puts: int = 1) -> list:
+    """Return the list of Sheets API format requests for a position tab.
+
+    Extracted from _setup_position_tab so it can be unit-tested without
+    touching Google Sheets. Each request is the dict produced by a
+    `sheets.*` formatter helper; the layout module owns *what* goes in
+    each cell, this owns *how* each cell is formatted.
+
+    Cell-type invariants worth pinning in tests:
+      - B6 (Last Updated) → DATE_TIME
+      - E8 (Position Opened) → DATE
+      - E13 (Date Opened, calls section) → DATE when shown
+      - E{p+3} (Date Opened, puts section) → DATE when shown
+      - Closed variants surface a second DATE cell (Date Closed) one
+        row below Date Opened.
+    """
+    p0 = p - 1
+    i0 = i - 1
+
+    requests = [
+        *sheets.title_row(sheet_id),
+        sheets.status_cell_fmt(sheet_id, status),
+        sheets.section_header(sheet_id, 2),                     # CURRENT VALUES
+        sheets.section_header(sheet_id, i0),                    # INCOME/P&L/RETURNS
+        sheets.section_header(sheet_id, txn_row - 3),           # TXN LOG
+        sheets.col_header(sheet_id, txn_row - 2),
+        sheets.yellow_bg(sheet_id, 4, 1, 8, 2),                 # B5-B8: live-data cells (yellow)
+        sheets.currency(sheet_id, 3, 1, 5, 2),                  # B4-B5: Adj Cost, Stock Price
+        sheets.datetime_fmt(sheet_id, 5, 1, 6, 2),              # B6: Last Updated
+        sheets.currency(sheet_id, 6, 1, 8, 2),                  # B7-B8: Calls/Puts Market Value
+        sheets.currency(sheet_id, 3, 4, 4, 5),                  # E4: Avg Cost / Share
+        sheets.plain_number(sheet_id, 4, 4, 5, 5),              # E5: Shares Held
+        sheets.currency(sheet_id, 5, 4, 7, 5),                  # E6-E7: Total Invested, Market Value
+        sheets.date_fmt(sheet_id, 7, 4, 8, 5),                  # E8: Position Opened
+        sheets.currency(sheet_id, 3, 7, 4, 8),
+        sheets.percent(sheet_id, 4, 7, 5, 8),
+        sheets.plain_number(sheet_id, 5, 7, 7, 8),
+        sheets.percent(sheet_id, 7, 7, 8, 8),
+        # Income / P&L / Returns (dynamic rows)
+        sheets.currency(sheet_id, i0 + 1, 1, i0 + 2, 2),        # Total Dividends
+        sheets.plain_number(sheet_id, i0 + 2, 1, i0 + 3, 2),    # Dividend Count
+        sheets.currency(sheet_id, i0 + 3, 1, i0 + 5, 2),        # Net premiums
+        sheets.currency(sheet_id, i0 + 1, 4, i0 + 6, 5),        # P&L data
+        sheets.currency(sheet_id, i0 + 1, 7, i0 + 4, 8),        # Amount Invested / Close-out / Total Income
+        sheets.percent(sheet_id, i0 + 4, 7, i0 + 6, 8),         # Ann Yields
+        sheets.currency(sheet_id, txn_row - 1, 7, 1000, 10),
+        sheets.green_if_positive(sheet_id, 3, 7, 5, 8),
+        sheets.green_if_positive(sheet_id, 7, 7, 8, 8),
+        sheets.green_if_positive(sheet_id, 5, 4, 6, 5),
+        sheets.green_if_positive(sheet_id, i0 + 1, 4, i0 + 6, 5),  # P&L breakdown
+        sheets.green_if_positive(sheet_id, i0 + 1, 1, i0 + 2, 2),  # Dividends
+        sheets.green_if_positive(sheet_id, i0 + 3, 1, i0 + 5, 2),  # Net premiums
+        sheets.green_if_positive(sheet_id, i0 + 1, 7, i0 + 4, 8),  # Currency returns
+        sheets.green_if_positive(sheet_id, i0 + 4, 7, i0 + 6, 8),  # Ann Yields
+    ]
+
+    if show_calls:
+        # CALL HISTORY aggregate stats — always at rows 10-15 (0-indexed 9-14)
+        requests += [
+            sheets.section_header(sheet_id, 9),
+            sheets.currency(sheet_id, 10, 1, 15, 2),             # B11-B15
+            sheets.green_if_positive(sheet_id, 12, 1, 13, 2),    # Net Call Premium
+            sheets.green_if_positive(sheet_id, 14, 1, 15, 2),    # Covered Call Results
+            sheets.green_if_positive(sheet_id, 10, 1, 11, 2),    # Call Premium Received
+        ]
+        if status != "Closed":
+            # Per-call OPEN CALL section pairs, stacked vertically.
+            n = max(n_calls, 1)
+            for idx in range(n):
+                base_0 = 9 + 9 * idx
+                requests += _open_call_section_fmt(sheet_id, base_0)
+        else:
+            # Closed position: single LAST CALL section, 9 rows
+            requests += [
+                sheets.currency(sheet_id, 10, 4, 11, 5),         # Strike
+                sheets.date_fmt(sheet_id, 12, 4, 13, 5),         # Date Opened
+                sheets.currency(sheet_id, 10, 7, 13, 8),         # Premium/Cost/Unrealized
+                sheets.green_if_positive(sheet_id, 10, 7, 11, 8),
+                sheets.date_fmt(sheet_id, 13, 4, 14, 5),         # Date Closed
+                sheets.plain_number(sheet_id, 14, 4, 15, 5),     # Days Open
+                sheets.currency(sheet_id, 15, 4, 16, 5),         # Price at Open
+                sheets.currency(sheet_id, 16, 4, 17, 5),         # Price at Close
+                sheets.plain_number(sheet_id, 17, 4, 18, 5),     # Contracts
+                sheets.right_align(sheet_id, 13, 7, 14, 8),      # Status at Close
+                sheets.right_align(sheet_id, 14, 7, 15, 8),      # Closed By
+                sheets.currency(sheet_id, 15, 7, 16, 8),         # Missed Upside
+                sheets.red_text(sheet_id, 15, 7, 16, 8),
+            ]
+
+    if show_puts:
+        # PUT HISTORY aggregate stats — always at rows p..p+5
+        requests += [
+            sheets.section_header(sheet_id, p0),
+            sheets.currency(sheet_id, p0 + 1, 1, p0 + 6, 2),
+            sheets.green_if_positive(sheet_id, p0 + 3, 1, p0 + 4, 2),  # Net Put Premium
+            sheets.green_if_positive(sheet_id, p0 + 5, 1, p0 + 6, 2),  # Put Results
+            sheets.green_if_positive(sheet_id, p0 + 1, 1, p0 + 2, 2),  # Put Premium Received
+        ]
+        if status != "Closed":
+            n = max(n_puts, 1)
+            for idx in range(n):
+                base_0 = p0 + 9 * idx
+                requests += _open_put_section_fmt(sheet_id, base_0)
+        else:
+            requests += [
+                sheets.currency(sheet_id, p0 + 1, 4, p0 + 2, 5),   # Strike
+                sheets.date_fmt(sheet_id, p0 + 3, 4, p0 + 4, 5),   # Date Opened
+                sheets.currency(sheet_id, p0 + 1, 7, p0 + 4, 8),   # Premium/Cost/Unrealized
+                sheets.green_if_positive(sheet_id, p0 + 1, 7, p0 + 2, 8),
+                sheets.date_fmt(sheet_id, p0 + 4, 4, p0 + 5, 5),   # Date Closed
+                sheets.plain_number(sheet_id, p0 + 5, 4, p0 + 6, 5),
+                sheets.currency(sheet_id, p0 + 6, 4, p0 + 7, 5),
+                sheets.currency(sheet_id, p0 + 7, 4, p0 + 8, 5),
+                sheets.plain_number(sheet_id, p0 + 8, 4, p0 + 9, 5),
+                sheets.right_align(sheet_id, p0 + 4, 7, p0 + 5, 8),
+                sheets.right_align(sheet_id, p0 + 5, 7, p0 + 6, 8),
+                sheets.currency(sheet_id, p0 + 6, 7, p0 + 7, 8),
+                sheets.red_text(sheet_id, p0 + 6, 7, p0 + 7, 8),
+            ]
+
+    return requests
+
+
 # ── Ticker processing ─────────────────────────────────────────────────────────
 
 def _txn_display(row):
@@ -211,7 +382,7 @@ def process_ticker(ticker, transactions, brokerage, service,
         if od:
             try:
                 import re as _re
-                m = _re.match(r"(\d{2})/(\d{2})/(\d{4})", od)
+                m = _re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", od)
                 if m:
                     ymd = f"{m.group(3)}-{m.group(1)}-{m.group(2)}"
                     from datetime import timedelta, date as _date
@@ -228,27 +399,36 @@ def process_ticker(ticker, transactions, brokerage, service,
     show_calls = bool(open_calls) or any(row[2] == "Call" for row in transactions)
     show_puts  = bool(open_puts)  or any(row[2] == "Put"  for row in transactions)
 
-    _p, _i, txn_row = _offsets(show_calls, show_puts)
+    _p, _i, txn_row = _offsets(show_calls, show_puts,
+                               n_calls=len(open_calls),
+                               n_puts=len(open_puts))
 
-    if current_call_value is None and open_calls:
-        total = sum(
-            v for p in open_calls
-            for v in [fetch_option_market_value(ticker, "Call", p["expiration"], p["strike"], p["contracts"])]
-            if v is not None
-        )
-        if total != 0:
-            current_call_value = round(total, 2)
-            print(f"  Fetched call market value from Yahoo: {current_call_value}")
+    # Per-call/put market values populate each open-position dict's
+    # `market_value` field (used by the per-call/per-put OPEN METRICS
+    # sections for Cost to Close). The aggregate sum across all open
+    # calls/puts becomes current_call_value / current_put_value for
+    # the Calls/Puts Market Value cells in CURRENT VALUES.
+    if open_calls:
+        for pos in open_calls:
+            mv = fetch_option_market_value(
+                ticker, "Call", pos["expiration"], pos["strike"], pos["contracts"])
+            pos["market_value"] = round(mv, 2) if mv is not None else None
+        if current_call_value is None:
+            total = sum(p["market_value"] or 0.0 for p in open_calls)
+            if total != 0:
+                current_call_value = round(total, 2)
+                print(f"  Fetched call market value from Yahoo: {current_call_value}")
 
-    if current_put_value is None and open_puts:
-        total = sum(
-            v for p in open_puts
-            for v in [fetch_option_market_value(ticker, "Put", p["expiration"], p["strike"], p["contracts"])]
-            if v is not None
-        )
-        if total != 0:
-            current_put_value = round(total, 2)
-            print(f"  Fetched put market value from Yahoo: {current_put_value}")
+    if open_puts:
+        for pos in open_puts:
+            mv = fetch_option_market_value(
+                ticker, "Put", pos["expiration"], pos["strike"], pos["contracts"])
+            pos["market_value"] = round(mv, 2) if mv is not None else None
+        if current_put_value is None:
+            total = sum(p["market_value"] or 0.0 for p in open_puts)
+            if total != 0:
+                current_put_value = round(total, 2)
+                print(f"  Fetched put market value from Yahoo: {current_put_value}")
 
     print(f"  Price: {current_price}  Call MV: {current_call_value}  Put MV: {current_put_value}")
     print(f"  Open positions: {len(open_positions)}")
@@ -281,7 +461,7 @@ def process_ticker(ticker, transactions, brokerage, service,
                 if not ds:
                     continue
                 try:
-                    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", ds)
+                    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", ds)
                     if not m:
                         continue
                     ymd = f"{m.group(3)}-{m.group(1)}-{m.group(2)}"
@@ -356,6 +536,11 @@ def process_ticker(ticker, transactions, brokerage, service,
         "has occurred, making this equivalent to cost basis assuming all open options "
         "expire worthless."
     )
+    yellow_legend_text = (
+        "Yellow cells = live data, refreshed each run (current stock price, "
+        "open-option market values, and update time). All other cells in this "
+        "tab are formulas derived from the transaction log."
+    )
     tv_call_text = (
         "** TV Ann Yield: annualized yield of the open call's time value relative to "
         "the close-out value of the covered shares (covered shares market value + call market value), "
@@ -381,7 +566,8 @@ def process_ticker(ticker, transactions, brokerage, service,
 
     if issues:
         sheets.write_range(service, tab_name, "K1", [["Data issues: " + "; ".join(issues)]])
-    sheets.write_range(service, tab_name, "K6", [[adj_text]])
+    sheets.write_range(service, tab_name, "K4", [[adj_text]])
+    sheets.write_range(service, tab_name, "K5", [[yellow_legend_text]])
     if show_calls and status != "Closed":
         sheets.write_range(service, tab_name, "K17", [[tv_call_text]])
     if show_puts:
@@ -411,129 +597,57 @@ def process_ticker(ticker, transactions, brokerage, service,
     i0 = i - 1
 
     merge_fmt = [
-        footnote_merge(5),
-        *([footnote_merge(16),
-           sheets.light_bg(sheet_id, 16, 6, 17, 8),
-           sheets.light_bg(sheet_id, 16, 10, 17, 26),
-           footnote_overflow(16)] if show_calls and status != "Closed" else []),
-        *([footnote_merge(p0 + 7),
-           sheets.light_bg(sheet_id, p0 + 7, 6, p0 + 8, 8),
-           sheets.light_bg(sheet_id, p0 + 7, 10, p0 + 8, 26),
-           footnote_overflow(p0 + 7)] if show_puts and status != "Closed" else []),
+        footnote_merge(3),                           # K4:Z4 — Adj Cost Basis footnote
+        footnote_merge(4),                           # K5:Z5 — Yellow legend footnote
+        # ** TV Ann Yield blue highlight + K footnote anchor, one per
+        # open call section (each call's TV row sits at 0-indexed
+        # 16 + 9*idx — i.e. the 8th row of the 8-row section starting
+        # at base_0 = 9 + 9*idx).
+        *([req
+           for idx in range(max(len(open_calls), 1))
+           for tv_row in [16 + 9 * idx]
+           for req in [
+               footnote_merge(tv_row),
+               sheets.light_bg(sheet_id, tv_row, 6, tv_row + 1, 8),
+               sheets.light_bg(sheet_id, tv_row, 10, tv_row + 1, 11),
+               footnote_overflow(tv_row),
+           ]
+           ] if show_calls and status != "Closed" else []),
+        # Same per-put — TV row sits at p0 + 7 + 9*idx.
+        *([req
+           for idx in range(max(len(open_puts), 1))
+           for tv_row in [p0 + 7 + 9 * idx]
+           for req in [
+               footnote_merge(tv_row),
+               sheets.light_bg(sheet_id, tv_row, 6, tv_row + 1, 8),
+               sheets.light_bg(sheet_id, tv_row, 10, tv_row + 1, 11),
+               footnote_overflow(tv_row),
+           ]
+           ] if show_puts and status != "Closed" else []),
         footnote_merge(i0 + 4), footnote_merge(i0 + 5),
-        sheets.light_bg(sheet_id, 5, 0, 6, 2),
-        sheets.light_bg(sheet_id, 5, 10, 6, 26),
+        sheets.light_bg(sheet_id, 3, 0, 4, 2),       # A4:B4 — Adj Cost Basis row
+        sheets.light_bg(sheet_id, 3, 3, 4, 5),       # D4:E4 — Avg Cost / Share (paired)
+        sheets.light_bg(sheet_id, 3, 10, 4, 11),     # K4 only — Adj Cost footnote anchor
+        sheets.yellow_bg(sheet_id, 4, 10, 8, 11),    # K5:K8 — vertical yellow strip mirroring B5:B8
         sheets.light_bg(sheet_id, i0 + 4, 6, i0 + 5, 8),
-        sheets.light_bg(sheet_id, i0 + 4, 10, i0 + 5, 26),
+        sheets.light_bg(sheet_id, i0 + 4, 10, i0 + 5, 11),  # K{i+5} only
         sheets.light_bg(sheet_id, i0 + 5, 6, i0 + 6, 8),
-        sheets.light_bg(sheet_id, i0 + 5, 10, i0 + 6, 26),
-        footnote_overflow(4), footnote_overflow(i0 + 4), footnote_overflow(i0 + 5),
+        sheets.light_bg(sheet_id, i0 + 5, 10, i0 + 6, 11),  # K{i+6} only
+        footnote_overflow(3), footnote_overflow(4),
+        footnote_overflow(i0 + 4), footnote_overflow(i0 + 5),
     ]
     if issues:
         merge_fmt += [
             footnote_merge(0), footnote_overflow(0),
-            sheets.light_bg(sheet_id, 0, 10, 1, 26),
+            sheets.light_bg(sheet_id, 0, 10, 1, 11),  # K1 only — issues footer anchor
         ]
     sheets.apply_fmt(service, sheet_id, merge_fmt)
 
     print("  Applying formatting...")
-    fmt_requests = [
-        *sheets.title_row(sheet_id),
-        sheets.status_cell_fmt(sheet_id, status),
-        sheets.section_header(sheet_id, 2),                      # CURRENT VALUES
-        sheets.section_header(sheet_id, i0),                     # INCOME/P&L/RETURNS
-        sheets.section_header(sheet_id, txn_row - 3),             # TXN LOG
-        sheets.col_header(sheet_id, txn_row - 2),
-        sheets.yellow_bg(sheet_id, 4, 1, 5, 2),
-        sheets.yellow_bg(sheet_id, 6, 1, 8, 2),
-        sheets.currency(sheet_id, 4, 1, 8, 2),
-        sheets.plain_number(sheet_id, 3, 4, 4, 5),
-        sheets.currency(sheet_id, 4, 4, 7, 5),
-        sheets.currency(sheet_id, 3, 7, 4, 8),
-        sheets.percent(sheet_id, 4, 7, 5, 8),
-        sheets.plain_number(sheet_id, 5, 7, 7, 8),
-        sheets.percent(sheet_id, 7, 7, 8, 8),
-        # Income / P&L / Returns (dynamic rows)
-        sheets.currency(sheet_id, i0 + 1, 1, i0 + 2, 2),        # Total Dividends
-        sheets.plain_number(sheet_id, i0 + 2, 1, i0 + 3, 2),    # Dividend Count
-        sheets.currency(sheet_id, i0 + 3, 1, i0 + 5, 2),        # Net premiums
-        sheets.currency(sheet_id, i0 + 1, 4, i0 + 6, 5),        # P&L data
-        sheets.currency(sheet_id, i0 + 1, 7, i0 + 4, 8),        # Amount Invested / Close-out / Total Income
-        sheets.percent(sheet_id, i0 + 4, 7, i0 + 6, 8),         # Ann Yields
-        sheets.currency(sheet_id, txn_row - 1, 7, 1000, 10),
-        sheets.green_if_positive(sheet_id, 3, 7, 5, 8),
-        sheets.green_if_positive(sheet_id, 7, 7, 8, 8),
-        sheets.green_if_positive(sheet_id, 5, 4, 6, 5),
-        sheets.green_if_positive(sheet_id, i0 + 1, 4, i0 + 6, 5),  # P&L breakdown
-        sheets.green_if_positive(sheet_id, i0 + 1, 1, i0 + 2, 2),  # Dividends
-        sheets.green_if_positive(sheet_id, i0 + 3, 1, i0 + 5, 2),  # Net premiums
-        sheets.green_if_positive(sheet_id, i0 + 1, 7, i0 + 4, 8),  # Currency returns
-        sheets.green_if_positive(sheet_id, i0 + 4, 7, i0 + 6, 8),  # Ann Yields
-    ]
-
-    if show_calls:
-        fmt_requests += [
-            sheets.section_header(sheet_id, 9),                  # CALL HISTORY / LAST CALL
-            sheets.currency(sheet_id, 10, 1, 15, 2),             # Call history data
-            sheets.currency(sheet_id, 10, 4, 11, 5),             # Strike
-            sheets.date_fmt(sheet_id, 12, 4, 13, 5),             # Date Opened
-            sheets.currency(sheet_id, 10, 7, 13, 8),             # Metrics premium
-            sheets.green_if_positive(sheet_id, 12, 1, 13, 2),    # Net Call Premium
-            sheets.green_if_positive(sheet_id, 14, 1, 15, 2),    # Covered Call Results
-            sheets.green_if_positive(sheet_id, 10, 1, 11, 2),    # Call Premium Received
-            sheets.green_if_positive(sheet_id, 10, 7, 11, 8),    # Metrics Premium Received
-        ] + ([
-            sheets.plain_number(sheet_id, 13, 4, 14, 5),         # Days Open (open: row 14)
-            sheets.currency(sheet_id, 14, 4, 15, 5),             # Price at Open (open: row 15)
-            sheets.plain_number(sheet_id, 15, 4, 16, 5),         # Days Left
-            sheets.plain_number(sheet_id, 16, 4, 17, 5),         # Contracts (open: row 17)
-            sheets.right_align(sheet_id, 13, 7, 14, 8),          # Status
-            sheets.currency(sheet_id, 14, 7, 16, 8),             # Intrinsic/Time Value
-            sheets.percent(sheet_id, 16, 7, 17, 8),              # TV Ann Yield
-            sheets.green_if_positive(sheet_id, 12, 7, 13, 8),    # Unrealized P&L
-        ] if status != "Closed" else [
-            sheets.date_fmt(sheet_id, 13, 4, 14, 5),             # Date Closed (closed: row 14)
-            sheets.plain_number(sheet_id, 14, 4, 15, 5),         # Days Open (closed: row 15)
-            sheets.currency(sheet_id, 15, 4, 16, 5),             # Price at Open (closed: row 16)
-            sheets.currency(sheet_id, 16, 4, 17, 5),             # Price at Close (closed: row 17)
-            sheets.plain_number(sheet_id, 17, 4, 18, 5),         # Contracts (closed: row 18)
-            sheets.right_align(sheet_id, 13, 7, 14, 8),          # Status at Close
-            sheets.right_align(sheet_id, 14, 7, 15, 8),          # Closed By
-            sheets.currency(sheet_id, 15, 7, 16, 8),             # Missed Upside (row 16)
-            sheets.red_text(sheet_id, 15, 7, 16, 8),             # Missed Upside red
-        ])
-
-    if show_puts:
-        fmt_requests += [
-            sheets.section_header(sheet_id, p0),                 # PUT HISTORY / LAST PUT
-            sheets.currency(sheet_id, p0 + 1, 1, p0 + 6, 2),    # Put history data
-            sheets.currency(sheet_id, p0 + 1, 4, p0 + 2, 5),    # Strike
-            sheets.date_fmt(sheet_id, p0 + 3, 4, p0 + 4, 5),    # Date Opened
-            sheets.currency(sheet_id, p0 + 1, 7, p0 + 4, 8),    # Metrics premium
-            sheets.green_if_positive(sheet_id, p0 + 3, 1, p0 + 4, 2),  # Net Put Premium
-            sheets.green_if_positive(sheet_id, p0 + 5, 1, p0 + 6, 2),  # Put Results
-            sheets.green_if_positive(sheet_id, p0 + 1, 1, p0 + 2, 2),  # Put Premium Received
-            sheets.green_if_positive(sheet_id, p0 + 1, 7, p0 + 2, 8),  # Metrics Premium Received
-        ] + ([
-            sheets.plain_number(sheet_id, p0 + 4, 4, p0 + 5, 5),# Days Open (open: p0+5)
-            sheets.currency(sheet_id, p0 + 5, 4, p0 + 6, 5),    # Price at Open (open: p0+6)
-            sheets.plain_number(sheet_id, p0 + 6, 4, p0 + 7, 5),# Days Left
-            sheets.plain_number(sheet_id, p0 + 7, 4, p0 + 8, 5),# Contracts (open: p0+8)
-            sheets.right_align(sheet_id, p0 + 4, 7, p0 + 5, 8), # Status
-            sheets.currency(sheet_id, p0 + 5, 7, p0 + 7, 8),    # Intrinsic/Time Value
-            sheets.percent(sheet_id, p0 + 7, 7, p0 + 8, 8),     # TV Ann Yield
-            sheets.green_if_positive(sheet_id, p0 + 3, 7, p0 + 4, 8),  # Unrealized P&L
-        ] if status != "Closed" else [
-            sheets.date_fmt(sheet_id, p0 + 4, 4, p0 + 5, 5),    # Date Closed (closed: p0+5)
-            sheets.plain_number(sheet_id, p0 + 5, 4, p0 + 6, 5),# Days Open (closed: p0+6)
-            sheets.currency(sheet_id, p0 + 6, 4, p0 + 7, 5),    # Price at Open (closed: p0+7)
-            sheets.currency(sheet_id, p0 + 7, 4, p0 + 8, 5),    # Price at Close (closed: p0+8)
-            sheets.plain_number(sheet_id, p0 + 8, 4, p0 + 9, 5),# Contracts (closed: p0+9)
-            sheets.right_align(sheet_id, p0 + 4, 7, p0 + 5, 8), # Status at Close
-            sheets.right_align(sheet_id, p0 + 5, 7, p0 + 6, 8), # Closed By
-            sheets.currency(sheet_id, p0 + 6, 7, p0 + 7, 8),    # Assignment Loss (p0+7)
-            sheets.red_text(sheet_id, p0 + 6, 7, p0 + 7, 8),    # Assignment Loss red
-        ])
+    fmt_requests = build_fmt_requests(
+        sheet_id, status, p, i, txn_row, show_calls, show_puts,
+        n_calls=len(open_calls), n_puts=len(open_puts),
+    )
     sheets.apply_fmt(service, sheet_id, fmt_requests)
 
     print("  Updating Summary...")
