@@ -55,15 +55,8 @@ def _apply_theme(theme_name: str) -> None:  # noqa: ARG001 — preserved for com
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
-# Load the layout-specific stylesheet that builds on top of the design
-# system in ui_theme.py. See options_scanner/styles.css for the rules.
-_STYLES_CSS = (
-    Path(__file__).parent / "options_scanner" / "styles.css"
-).read_text(encoding="utf-8")
-st.html(f"<style>{_STYLES_CSS}</style>")
-
-# Load config and seed data_source_choice into session_state BEFORE the
-# dynamic accent-color block below reads it.
+# Config must load first so data_source_choice is seeded into session_state
+# before we compute the accent colors below.
 from options_scanner.config import load_config, get_provider, get_schwab_config as _get_schwab_cfg
 _app_cfg = load_config()
 _cfg_provider = get_provider(_app_cfg)
@@ -79,12 +72,10 @@ if "data_source_choice" not in st.session_state:
         "schwab" if (_cfg_provider == "schwab" and _schwab_configured) else "yahoo"
     )
 
-# Inject the dynamic accent colors as CSS custom properties. Primary
-# buttons and the data-source pill's active state read --primary /
-# --primary-hover from styles.css. Reads `data_source_choice` (the
-# widget key) — NOT the effective `data_source` — so the color flips
-# on the same rerun the dropdown changed, and clicking Scan doesn't
-# trigger spurious color flips.
+# Compute accent colors from the current data-source choice. Reads
+# `data_source_choice` (the widget key) — NOT the effective
+# `data_source` — so the color flips on the same rerun the dropdown
+# changed, not one rerun later.
 _BTN_COLORS = {
     "yahoo":  ("#16a34a", "#15803d"),   # normal, hover
     "schwab": ("#2563eb", "#1d4ed8"),
@@ -93,10 +84,46 @@ _btn_bg, _btn_hover = _BTN_COLORS.get(
     st.session_state.get("data_source_choice", "yahoo"),
     _BTN_COLORS["yahoo"],
 )
-st.html(
-    f"<style>:root {{ --primary: {_btn_bg}; "
-    f"--primary-hover: {_btn_hover}; }}</style>"
-)
+
+# Inject the stylesheet and the :root accent variables in a SINGLE
+# st.html() call. Each st.html() renders in its own iframe — if the
+# :root block and the var(--primary) references live in separate iframes
+# the custom property is undefined and the coloring silently disappears.
+_STYLES_CSS = (
+    Path(__file__).parent / "options_scanner" / "styles.css"
+).read_text(encoding="utf-8")
+st.html(f"<style>{_STYLES_CSS}</style>")
+
+# Dynamic accent rules injected with LITERAL hex values each rerun.
+# CSS custom properties (var()) don't resolve reliably across
+# Streamlit's st.html injection boundary, so the colors must be
+# baked into the rule text. Reads `data_source_choice` (the widget
+# key) — NOT the effective `data_source` — so the color flips on
+# the same rerun the toggle changed.
+st.html(f"""<style>
+.stButton > button[kind="primary"],
+button[data-testid="stBaseButton-primary"] {{
+    background-color: {_btn_bg} !important;
+    border-color: {_btn_bg} !important;
+}}
+.stButton > button[kind="primary"]:hover,
+button[data-testid="stBaseButton-primary"]:hover {{
+    background-color: {_btn_hover} !important;
+    border-color: {_btn_hover} !important;
+}}
+[class*="st-key-data_source_pill"] button[aria-pressed="true"],
+[class*="st-key-data_source_pill"] button[aria-selected="true"],
+[class*="st-key-data_source_pill"] button[data-testid*="Active"] {{
+    color: {_btn_bg} !important;
+    border-color: {_btn_bg} !important;
+    box-shadow: inset 0 0 0 1px {_btn_bg} !important;
+}}
+[class*="st-key-data_source_pill"] button[aria-pressed="true"] p,
+[class*="st-key-data_source_pill"] button[aria-selected="true"] p,
+[class*="st-key-data_source_pill"] button[data-testid*="Active"] p {{
+    color: {_btn_bg} !important;
+}}
+</style>""")
 
 # Brand wordmark pinned to the top header bar. The styling lives in
 # styles.css; only the markup is emitted here.

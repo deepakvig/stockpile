@@ -99,33 +99,11 @@ body[data-sidebar-open="true"] [class*="st-key-data_source_pill"] {
     font-weight: 500;
 }
 
-/* Primary-button + data-source-pill accent recoloring.
-   --primary / --primary-hover are set per-rerun in run_app.py
-   (green for Yahoo, blue for Schwab). Reads data_source_choice
-   (the widget key), not the effective data_source, so the color
-   flips on the same rerun the dropdown changed. */
-.stButton > button[kind="primary"],
-button[data-testid="stBaseButton-primary"] {
-    background-color: var(--primary) !important;
-    border-color: var(--primary) !important;
-}
-.stButton > button[kind="primary"]:hover,
-button[data-testid="stBaseButton-primary"]:hover {
-    background-color: var(--primary-hover) !important;
-    border-color: var(--primary-hover) !important;
-}
-[class*="st-key-data_source_pill"] button[aria-pressed="true"],
-[class*="st-key-data_source_pill"] button[aria-selected="true"],
-[class*="st-key-data_source_pill"] button[data-testid*="Active"] {
-    color: var(--primary) !important;
-    border-color: var(--primary) !important;
-    box-shadow: inset 0 0 0 1px var(--primary) !important;
-}
-[class*="st-key-data_source_pill"] button[aria-pressed="true"] p,
-[class*="st-key-data_source_pill"] button[aria-selected="true"] p,
-[class*="st-key-data_source_pill"] button[data-testid*="Active"] p {
-    color: var(--primary) !important;
-}
+/* Primary-button + data-source-pill accent recoloring is injected
+   as a separate dynamic st.html() call in run_app.py with literal
+   hex values. CSS custom properties (var(--primary)) don't resolve
+   reliably across Streamlit's injection boundary, so the colors
+   must be baked into the rule text each rerun. */
 
 /* Brand wordmark pinned to the top header bar. The matching <div>
    element is emitted from run_app.py (it's HTML body content, not
