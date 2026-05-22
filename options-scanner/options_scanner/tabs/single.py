@@ -407,6 +407,19 @@ def tab_single() -> None:
             .reset_index(drop=True)
             .copy()
         )
+        # Empty after filters → nothing to analyze. Surface the reason
+        # explicitly rather than render an empty dropdown. Check BEFORE
+        # the _label assignment below, since df.apply(..., axis=1) on an
+        # empty frame returns an empty DataFrame (not Series), which then
+        # crashes the single-column assignment.
+        if df_mc.empty:
+            empty_state(
+                title="No candidates pass the table's filters",
+                subtitle="Top candidates is empty for this ticker — relax "
+                         "Min OI / Min Vol on the scan, or pick a ticker "
+                         "with more option-chain liquidity.",
+            )
+            return
         # The first row is now exactly rank-1 from
         # "Top candidates — all chains" for the current scan direction.
         df_mc["_label"] = (
@@ -419,16 +432,6 @@ def tab_single() -> None:
                 f"  ·  IV+pp {r.get('iv_excess', 0) * 100:+.1f}"
             ), axis=1)
         )
-        # Empty after filters → nothing to analyze. Surface the reason
-        # explicitly rather than render an empty dropdown.
-        if df_mc.empty:
-            empty_state(
-                title="No candidates pass the table's filters",
-                subtitle="Top candidates is empty for this ticker — relax "
-                         "Min OI / Min Vol on the scan, or pick a ticker "
-                         "with more option-chain liquidity.",
-            )
-            return
         # Mark the best one so the user knows the default isn't arbitrary.
         best_signal = df_mc.iloc[0]["iv_excess"] * 100
         best_label = df_mc.iloc[0]["_label"]
