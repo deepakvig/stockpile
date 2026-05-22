@@ -39,50 +39,62 @@ from options_scanner.ui_theme import badge, empty_state, metric_card, section_he
 
 
 def tab_single() -> None:
-    # ── Recent Scans: pre-fill session state before any widget renders ────────
-    # When the user picks a recent scan, we stash it under "_s_recall" and
-    # rerun. On the next pass this block writes each field into the matching
-    # widget key so all widgets initialize from the correct values.
-    recall = st.session_state.pop("_s_recall", None)
-    if recall:
-        st.session_state["s_ticker"] = recall["ticker"]
-        st.session_state["s_flow"] = (
+    # ── Group 1: Ticker + flow + Recent Scans ─────────────────────────────────
+    _recent = load_recent()
+    _placeholder = "— recent scans —"
+
+    def _apply_recall() -> None:
+        """on_change callback for the Recent Scans selectbox.
+
+        Runs synchronously before Streamlit reruns, so session-state writes
+        here ARE reflected in widgets on the very next render — no separate
+        st.rerun() or pre-fill pass needed. Setting s_recent_choice back to
+        the placeholder is allowed inside callbacks (unlike post-render).
+        """
+        choice = st.session_state.get("s_recent_choice", _placeholder)
+        if choice == _placeholder:
+            return
+        # Locate the matching entry by its display label.
+        entry = next((e for e in _recent if build_label(e) == choice), None)
+        if entry is None:
+            return
+        _step = 0.05
+        _dmin = round(round(float(entry.get("delta_min", 0.10)) / _step) * _step, 10)
+        _dmax = round(round(float(entry.get("delta_max", 0.75)) / _step) * _step, 10)
+        st.session_state["s_ticker"] = entry["ticker"]
+        st.session_state["s_flow"]   = (
             "Roll an existing position"
-            if recall.get("flow") == "roll"
+            if entry.get("flow") == "roll"
             else "Find new options"
         )
-        # Shared filter group (Group 3) — applies to both flows.
-        st.session_state["s_min_dte"] = int(recall.get("min_dte", 30))
-        st.session_state["s_max_dte"] = int(recall.get("max_dte", 90))
-        st.session_state["s_min_oi"]  = int(recall.get("min_oi", 25))
-        st.session_state["s_min_vol"] = int(recall.get("min_vol", 10))
-        st.session_state["s_delta"]   = (
-            float(recall.get("delta_min", 0.10)),
-            float(recall.get("delta_max", 0.75)),
-        )
-        st.session_state["s_top"] = int(recall.get("top_n", 10))
-        if recall.get("flow") == "roll":
-            st.session_state["s_roll_type"]   = recall.get("roll_type", "call")
-            st.session_state["s_roll_strike"]  = float(recall.get("roll_strike", 0.0))
+        st.session_state["s_min_dte"] = max(1, int(entry.get("min_dte", 30)))
+        st.session_state["s_max_dte"] = int(entry.get("max_dte", 90))
+        st.session_state["s_min_oi"]  = int(entry.get("min_oi", 25))
+        st.session_state["s_min_vol"] = int(entry.get("min_vol", 10))
+        st.session_state["s_delta"]   = (_dmin, _dmax)
+        st.session_state["s_top"]     = int(entry.get("top_n", 10))
+        if entry.get("flow") == "roll":
+            st.session_state["s_roll_type"]   = entry.get("roll_type", "call")
+            st.session_state["s_roll_strike"]  = float(entry.get("roll_strike", 0.0))
             try:
                 from datetime import datetime as _dt
                 st.session_state["s_roll_exp"] = _dt.strptime(
-                    recall["roll_exp"], "%Y-%m-%d"
+                    entry["roll_exp"], "%Y-%m-%d"
                 ).date()
             except (KeyError, ValueError):
                 pass
         else:
             st.session_state["s_action"] = (
                 "Buy (IV-cheap candidates)"
-                if recall.get("buy")
+                if entry.get("buy")
                 else "Sell (IV-rich candidates)"
             )
-            st.session_state["s_opt_type"] = recall.get("option_type", "Calls")
+            st.session_state["s_opt_type"] = entry.get("option_type", "Calls")
+        # Reset the dropdown to placeholder — allowed inside on_change.
+        st.session_state["s_recent_choice"] = _placeholder
 
-    # ── Group 1: Ticker + flow + Recent Scans ─────────────────────────────────
-    _recent = load_recent()
     with st.container(border=True):
-        tc, fc, rc = st.columns([1, 4, 2])
+        tc, fc, rc = st.columns([1, 2.5, 3.5])
         with tc:
             ticker = st.text_input("Ticker", "AAPL", key="s_ticker")
         with fc:
@@ -93,23 +105,15 @@ def tab_single() -> None:
                 key="s_flow",
             )
         with rc:
-            _placeholder = "— recent scans —"
             _options = [_placeholder] + [build_label(e) for e in _recent]
-            _choice = st.selectbox(
+            st.selectbox(
                 "Recent Scans",
                 _options,
                 index=0,
                 key="s_recent_choice",
+                on_change=_apply_recall,
                 label_visibility="visible",
             )
-            if _choice != _placeholder:
-                _idx = _options.index(_choice) - 1
-                st.session_state["_s_recall"] = _recent[_idx]
-                # Deleting the widget key resets it to index=0 (placeholder)
-                # on the next run. Setting it after render raises
-                # StreamlitAPIException — delete is the correct pattern.
-                del st.session_state["s_recent_choice"]
-                st.rerun()
     rolling = (flow == "Roll an existing position")
 
     # Defaults so the same scan code path handles both flows
@@ -248,13 +252,17 @@ def tab_single() -> None:
             )
 
         if err:
-            st.error(err)
+            st.error(f"**{ticker_clean}:** {err}")
             st.session_state.pop("single_results", None)
-            return
+            st.stop()
         if df.empty:
-            st.warning(f"No options found for {ticker_clean} with the given DTE range.")
+            st.warning(
+                f"**{ticker_clean}:** No options found for DTE {int(min_dte)}–"
+                f"{int(max_dte_inp) if max_dte_inp else '∞'}. "
+                "Try widening the DTE range or check that the ticker has listed options."
+            )
             st.session_state.pop("single_results", None)
-            return
+            st.stop()
 
         # Roll: look up close cost for the existing position
         roll_close_cost = None
@@ -307,6 +315,8 @@ def tab_single() -> None:
             "roll_close_cost": roll_close_cost,
             "delta_min": delta_min,
             "delta_max": delta_max,
+            "min_dte": int(min_dte),
+            "max_dte": int(max_dte_inp),
             "min_oi": int(min_oi),
             "min_vol": int(min_vol),
             "top_n": int(top_n),
@@ -414,19 +424,34 @@ def tab_single() -> None:
         st.info(f"Rolling {res['roll_type']} ${res['roll_strike']:.0f} "
                 f"{res['roll_exp_str']} — close cost (mid): **${rcc:.2f}**")
 
-    # Floating rescan button — CSS pins it to the top header bar next to
-    # the logo so it stays visible at every scroll position. Lets the
-    # user re-run the scan (e.g. after flipping the sidebar data source)
-    # without scrolling back to the top of the page. The container is
-    # rendered here but `position: fixed` (in the global style block)
-    # lifts it out of normal flow — so its location in the code doesn't
-    # affect the visible layout, only that it's scoped to Single Ticker
-    # results.
-    with st.container(key="rescan_pill_single"):
-        if st.button(f"↻ Rescan {ticker_r}", type="primary",
-                     key="s_rescan_btn"):
-            st.session_state["_rescan_trigger"] = True
-            st.rerun()
+    # Rescan button (fixed to header bar) + scan-criteria summary on
+    # the same row. The button container is position:fixed via CSS so
+    # it lifts out of document flow; _btn_col becomes a spacer in the
+    # page body, and _sum_col holds the criteria caption to its right.
+    _min_dte = res.get("min_dte", "?")
+    _max_dte = res.get("max_dte", 0)
+    _dte_str = f"DTE {_min_dte}–{_max_dte}" if _max_dte else f"DTE ≥{_min_dte}"
+    _delta_str = f"Δ {res['delta_min']:.2f}–{res['delta_max']:.2f}"
+    if rcc is not None:
+        _mode_str = f"{res.get('roll_type','').upper()} ${res.get('roll_strike',0):.0f} exp {res.get('roll_exp_str','')}"
+        _summary = (f"**Roll** · {_mode_str} · {_dte_str} · "
+                    f"OI≥{res['min_oi']} · Vol≥{res.get('min_vol',0)} · {_delta_str}")
+    else:
+        _dir = "BUY" if buy_r else "SELL"
+        _type = {"call": "Calls", "put": "Puts", "both": "Both"}.get(mode_r, mode_r)
+        _summary = (f"**{_type} · {_dir}** · {_dte_str} · "
+                    f"OI≥{res['min_oi']} · Vol≥{res.get('min_vol',0)} · "
+                    f"{_delta_str} · Top {res['top_n']}")
+
+    _btn_col, _sum_col = st.columns([1, 5])
+    with _btn_col:
+        with st.container(key="rescan_pill_single"):
+            if st.button(f"↻ Rescan {ticker_r}", type="primary",
+                         key="s_rescan_btn"):
+                st.session_state["_rescan_trigger"] = True
+                st.rerun()
+    with _sum_col:
+        st.caption(_summary)
 
     show_iv_chart(df_filt, spot, mode_r, res["min_oi"], res["top_n"],
                    buy_r, ticker=ticker_r, key_prefix="s",

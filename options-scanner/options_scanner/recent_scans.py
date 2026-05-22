@@ -41,11 +41,33 @@ _MAX_ENTRIES = 12
 
 
 def load() -> list[dict]:
-    """Return saved entries newest-first. Returns [] on missing or corrupt file."""
+    """Return saved entries newest-first. Returns [] on missing or corrupt file.
+
+    Entries missing required fields (e.g. saved before a schema change)
+    are silently skipped so stale files never break the UI.
+    """
     try:
-        return json.loads(_PATH.read_text(encoding="utf-8"))
+        entries = json.loads(_PATH.read_text(encoding="utf-8"))
     except Exception:
         return []
+    valid = []
+    for e in entries:
+        try:
+            # Minimum viable entry: must have flow and ticker.
+            # Back-fill shared filter fields missing from older entries.
+            if not e.get("flow") or not e.get("ticker"):
+                continue
+            e.setdefault("min_dte",   30)
+            e.setdefault("max_dte",   90)
+            e.setdefault("min_oi",    25)
+            e.setdefault("min_vol",   10)
+            e.setdefault("delta_min", 0.10)
+            e.setdefault("delta_max", 0.75)
+            e.setdefault("top_n",     10)
+            valid.append(e)
+        except Exception:
+            continue
+    return valid
 
 
 def save(entry: dict) -> None:
@@ -70,7 +92,7 @@ def build_label(entry: dict) -> str:
     """Human-readable selectbox label for an entry."""
     ticker = entry.get("ticker", "?")
     min_oi = entry.get("min_oi", 0)
-    oi_str = f" OI≥{min_oi}" if min_oi else ""
+    oi_str = f" · OI≥{min_oi}" if min_oi else ""
     if entry.get("flow") == "roll":
         rtype = entry.get("roll_type", "call").upper()
         strike = entry.get("roll_strike", 0.0)
@@ -79,11 +101,11 @@ def build_label(entry: dict) -> str:
             exp_fmt = datetime.strptime(exp, "%Y-%m-%d").strftime("%b %d '%y")
         except ValueError:
             exp_fmt = exp
-        return f"{ticker} · {rtype} ${strike:.0f} · {exp_fmt}{oi_str} [Roll]"
+        return f"{ticker} [Roll] · {rtype} ${strike:.0f} · {exp_fmt}{oi_str}"
     else:
         otype = entry.get("option_type", "Calls").upper()
         direction = "BUY" if entry.get("buy") else "SELL"
         min_dte = entry.get("min_dte", 30)
         max_dte = entry.get("max_dte", 90)
         dte_str = f"DTE {min_dte}–{max_dte}" if max_dte else f"DTE ≥{min_dte}"
-        return f"{ticker} · {otype} · {direction} · {dte_str}{oi_str} [Find]"
+        return f"{ticker} [Find] · {otype} · {direction} · {dte_str}{oi_str}"
