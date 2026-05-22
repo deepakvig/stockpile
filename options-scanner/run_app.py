@@ -1228,7 +1228,8 @@ def _tab_single() -> None:
                                       key="s_min_dte")
         with n2:
             max_dte_inp = st.number_input("Max DTE", value=90, min_value=0,
-                                          help="0 = no limit", key="s_max_dte")
+                                          help="0 = no limit; otherwise ≥ Min DTE",
+                                          key="s_max_dte")
         with n3:
             min_oi = st.number_input("Min OI", value=25, min_value=0,
                                      key="s_min_oi")
@@ -1285,6 +1286,14 @@ def _tab_single() -> None:
         ticker_clean = ticker.strip().upper()
         if not ticker_clean:
             st.error("Enter a ticker symbol.")
+            st.session_state.pop("single_results", None)
+            return
+
+        if 0 < int(max_dte_inp) < int(min_dte):
+            st.error(
+                f"Max DTE ({int(max_dte_inp)}) must be ≥ Min DTE "
+                f"({int(min_dte)}), or 0 for no limit."
+            )
             st.session_state.pop("single_results", None)
             return
 
@@ -2711,6 +2720,14 @@ def _render_spreads_view(
             return
         if not selected_strategies:
             st.error("Select at least one strategy.")
+            return
+
+        if int(max_dte) < int(min_dte):
+            st.error(
+                f"Max DTE ({int(max_dte)}) must be ≥ Min DTE "
+                f"({int(min_dte)})."
+            )
+            st.session_state.pop(session_key, None)
             return
 
         with st.spinner(f"Fetching {ticker_clean} option chain…"):
