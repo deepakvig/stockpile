@@ -222,7 +222,7 @@ def _render_view(
     with st.container(border=True):
         tc, _ = st.columns([1, 5])
         with tc:
-            ticker = st.text_input("Ticker", "AAPL", key=f"{key_prefix}_ticker")
+            ticker = st.text_input("Ticker (ex: AAPL)", "", key=f"{key_prefix}_ticker")
 
     # Width-mode toggle determines $ vs % defaults dynamically
     width_mode_label = st.radio(

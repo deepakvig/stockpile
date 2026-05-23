@@ -48,7 +48,7 @@ def tab_gex() -> None:
     section for caveats.
     """
     with st.container(border=True):
-        tc, sc, _ = st.columns([2, 1, 4], vertical_alignment="bottom")
+        tc, sc, expl = st.columns([2, 1, 4], vertical_alignment="bottom")
         with tc:
             tickers_input = st.text_input(
                 "Ticker(s) — comma-separated",
@@ -65,6 +65,35 @@ def tab_gex() -> None:
                 scanned = st.button("Scan", type="primary",
                                     use_container_width=True,
                                     key="g_scan_btn")
+        with expl:
+            st.markdown(
+                "<style>"
+                ".gex-expl details > summary { list-style: none; cursor: pointer; }"
+                ".gex-expl details > summary::-webkit-details-marker { display: none; }"
+                "[data-testid='stMarkdownContainer']:has(.gex-expl)"
+                " { margin-bottom: 0 !important; }"
+                "</style>"
+                "<div class='gex-expl' style='font-size:0.78rem; color:#475569; "
+                "padding:0 0 0 0.75rem; line-height:1.5; margin-bottom:0;'>"
+                "<details>"
+                "<summary>"
+                "<b>Gamma Exposure (GEX)</b> shows the aggregate delta-hedging "
+                "pressure dealers must apply at each strike."
+                "&nbsp;<span style='color:#94a3b8;'>▾</span>"
+                "</summary>"
+                "<div style='margin-top:0.3rem;'>"
+                "After scanning you'll see a bar chart by strike and a "
+                "strikes-of-interest table with three key levels: "
+                "<b>Gamma Wall</b> (largest positive GEX — price tends to pin here), "
+                "<b>Amp Zone</b> (largest negative GEX — moves tend to accelerate), "
+                "and <b>Zero-gamma level</b> (the flip point where the regime "
+                "switches from pinning to amplifying). "
+                "Diagnostic context, not a directional signal."
+                "</div>"
+                "</details>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
 
     st.caption(
         "Scans the **0–60 DTE** chain across both calls and puts. "

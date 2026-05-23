@@ -97,7 +97,7 @@ def tab_single() -> None:
     with st.container(border=True):
         tc, fc, rc = st.columns([1, 2.5, 3.5])
         with tc:
-            ticker = st.text_input("Ticker", "AAPL", key="s_ticker")
+            ticker = st.text_input("Ticker (ex: AAPL)", "", key="s_ticker")
         with fc:
             flow = st.radio(
                 "What do you want to do?",
@@ -206,7 +206,7 @@ def tab_single() -> None:
         with sf2:
             sf_spread_pct = st.number_input(
                 "Max spread % of mid", value=50, min_value=1, max_value=200,
-                step=5, key="s_sf_spread_pct", disabled=not sf_use_spread,
+                step=1, key="s_sf_spread_pct", disabled=not sf_use_spread,
                 help="Options where (ask−bid)/mid exceeds this are excluded.",
             )
         with sf1:
