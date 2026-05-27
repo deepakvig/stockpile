@@ -73,14 +73,18 @@ def fetch_and_enrich(ticker: str, opt_type: str, min_dte: int,
                      schwab_config: dict | None = None,
                      surface_filters: SurfaceFilterConfig = DEFAULT_CONFIG,
                      algo_config: AlgorithmConfig = ALGO_DEFAULT,
-                     score_config: ScoreConfig = SCORE_DEFAULT):
+                     score_config: ScoreConfig = SCORE_DEFAULT,
+                     moomoo_config: dict | None = None):
     from options_scanner.chain import fetch_chain
     try:
         df = fetch_chain(ticker, opt_type=opt_type, min_dte=min_dte,
                          max_dte=max_dte, provider=provider,
-                         schwab_config=schwab_config)
-    except ValueError as exc:
+                         schwab_config=schwab_config,
+                         moomoo_config=moomoo_config)
+    except (ValueError, OSError, ConnectionRefusedError, RuntimeError) as exc:
         return pd.DataFrame(), [], str(exc)
+    except Exception as exc:  # noqa: BLE001 — surface Moomoo/Schwab SDK errors
+        return pd.DataFrame(), [], f"{type(exc).__name__}: {exc}"
     if df.empty:
         return df, [], None
     df, earnings = _enrich(df, ticker, surface_filters, algo_config,
@@ -93,14 +97,18 @@ def fetch_position(ticker: str, min_dte: int, provider: str = "yahoo",
                    schwab_config: dict | None = None,
                    surface_filters: SurfaceFilterConfig = DEFAULT_CONFIG,
                    algo_config: AlgorithmConfig = ALGO_DEFAULT,
-                   score_config: ScoreConfig = SCORE_DEFAULT):
+                   score_config: ScoreConfig = SCORE_DEFAULT,
+                   moomoo_config: dict | None = None):
     """Cached per-ticker chain fetch for portfolio tab."""
     from options_scanner.chain import fetch_chain
     try:
         df = fetch_chain(ticker, opt_type="calls", min_dte=min_dte,
-                         provider=provider, schwab_config=schwab_config)
-    except ValueError as exc:
+                         provider=provider, schwab_config=schwab_config,
+                         moomoo_config=moomoo_config)
+    except (ValueError, OSError, ConnectionRefusedError, RuntimeError) as exc:
         return pd.DataFrame(), [], str(exc)
+    except Exception as exc:  # noqa: BLE001 — surface Moomoo/Schwab SDK errors
+        return pd.DataFrame(), [], f"{type(exc).__name__}: {exc}"
     if df.empty:
         return df, [], None
     df, earnings = _enrich(df, ticker, surface_filters, algo_config,

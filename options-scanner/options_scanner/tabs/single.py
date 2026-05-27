@@ -383,6 +383,7 @@ def tab_single() -> None:
                 st.session_state.get("data_source", "yahoo"),
                 st.session_state.get("schwab_config"),
                 surface_filter_config, algo_config, score_config,
+                moomoo_config=st.session_state.get("moomoo_config"),
             )
 
         if err:
