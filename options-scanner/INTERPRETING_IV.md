@@ -106,9 +106,18 @@ pipeline to remove quotes that would distort the surface:
 - **Delta range** — options with |Δ| outside 0.05–0.95 are
   excluded by default
 
-These defaults are configurable under the **Surface fit filters**
-expander in the Single Ticker tab. All options still appear in
-the chart and table — only the regression itself is filtered.
+These defaults are configurable under the **Advanced surface fit**
+expander in the Single Ticker tab (the **Fit:** preset toggle picks
+Global vs. Per-expiry). All options still appear in the chart and
+table — only the regression itself is filtered.
+
+To see which contracts fed the fit — and why a fit sometimes falls
+back to tracing the quotes — open the **Surface-fit diagnostics**
+expander below the chart: a filter funnel shows where contracts dropped
+out, and a per-expiration table flags slices fit by fallback. On the
+chart itself, filled dots fed the fit and hollow dots were filtered
+out, and the **All expirations** view toggle overlays every
+expiration's fitted line so you can see the whole surface at once.
 
 The surface does not model:
 

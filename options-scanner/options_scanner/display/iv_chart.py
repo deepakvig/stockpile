@@ -378,7 +378,7 @@ def show_iv_chart(df: pd.DataFrame, spot: float, mode: str,
         "<span style='color:#3b82f6'>&#9632;&#9632; &mdash; &mdash;</span>"
         "&nbsp;<b>Blue dashed</b> (Schwab) &mdash;"
         " IV surface fit across all fetched expirations (within your DTE range),"
-        " using only clean data (configurable under <i>Surface fit filters</i>)."
+        " using only clean data (configurable under <i>Advanced surface fit</i>)."
         " <b>Dot color and IV+pp both measure distance above/below this line</b>"
         " &mdash; green dot = IV-rich, red = IV-cheap."
         "<br>"

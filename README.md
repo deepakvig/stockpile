@@ -56,8 +56,8 @@ A companion series on building a Yahoo Finance CLI with Claude Code
   surface, surfacing IV-rich candidates to sell or IV-cheap ones to
   buy. Three entry points: a CLI scanner for a single ticker, a
   portfolio scanner that reads a brokerage CSV, and a Streamlit web UI.
-  Supports Yahoo Finance (default, no setup) or the Schwab developer
-  API (real-time quotes and Greeks)
+  Supports Yahoo Finance (default, no setup), the Schwab developer
+  API, or Moomoo via the OpenD gateway (real-time quotes and Greeks)
 - **[google-sheets-setup](google-sheets-setup/README.md)** — Google
   Sheets API setup docs
 
