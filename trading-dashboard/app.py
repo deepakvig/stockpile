@@ -25,8 +25,9 @@ def ohlcv():
     if cached is not None: return jsonify({"ok":True,"data":cached,"cached":True})
     try:
         candles = fetch_ohlcv(source,symbol,interval,limit); _put(ckey,candles); return jsonify({"ok":True,"data":candles,"cached":False})
-    except Exception as e:
-        return jsonify({"ok":False,"error":str(e)}), 400
+    except Exception:
+        app.logger.exception("ohlcv fetch failed (source=%s symbol=%s interval=%s)", source, symbol, interval)
+        return jsonify({"ok":False,"error":f"Could not fetch data for '{symbol}' from '{source}'"}), 400
 
 @app.route('/api/price')
 def price():
@@ -34,8 +35,9 @@ def price():
     if candles is None:
         try:
             candles = fetch_ohlcv(source,symbol,'1d',2); _put(ckey,candles)
-        except Exception as e:
-            return jsonify({"ok":False,"error":str(e)}), 400
+        except Exception:
+            app.logger.exception("price fetch failed (source=%s symbol=%s)", source, symbol)
+            return jsonify({"ok":False,"error":f"Could not fetch price for '{symbol}' from '{source}'"}), 400
     if len(candles) >= 2:
         prev, last = candles[-2]['close'], candles[-1]['close']; chg = last - prev; chgp = (chg/prev*100) if prev else 0
     elif candles:
