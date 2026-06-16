@@ -5,7 +5,7 @@ fork it and open a pull request — no special permissions needed.
 
 ## Requirements
 
-- Python 3.12+. If you don't have it, let uv manage it:
+- Python 3.12+. If you don't have it, let uv manage it
   ```bash
   uv python install 3.12
   ```
